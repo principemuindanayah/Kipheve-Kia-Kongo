@@ -157,13 +157,29 @@ export default function App() {
     window.addEventListener('resize', checkOrientation);
     window.addEventListener('orientationchange', checkOrientation);
 
-    // 2. Sensor de Movimento / Giroscópio (DeviceOrientation)
+    // 2. Sensor de Movimento / Giroscópio (DeviceOrientation) com filtro contra jitter
+    let lastTiltX = 0;
+    let lastTiltY = 0;
+    let rAFId: number | null = null;
+
     const handleOrientationMotion = (e: DeviceOrientationEvent) => {
       if (e.beta !== null && e.gamma !== null) {
-        // Efeito sutil de inclinação 3D luxuosa
-        const rotX = Math.max(-10, Math.min(10, (e.beta - 45) * 0.2));
-        const rotY = Math.max(-10, Math.min(10, e.gamma * 0.2));
-        setTilt({ x: -rotX, y: rotY });
+        // Normaliza ângulo com base na postura padrão de segurar o dispositivo (~45°)
+        const rawTargetX = -Math.max(-10, Math.min(10, (e.beta - 45) * 0.2));
+        const rawTargetY = Math.max(-10, Math.min(10, e.gamma * 0.2));
+
+        // Filtro deadband contra micro-trepidações/jitter do sensor de rotação
+        const deltaX = Math.abs(rawTargetX - lastTiltX);
+        const deltaY = Math.abs(rawTargetY - lastTiltY);
+
+        if (deltaX > 0.2 || deltaY > 0.2) {
+          if (rAFId !== null) cancelAnimationFrame(rAFId);
+          rAFId = requestAnimationFrame(() => {
+            lastTiltX = rawTargetX;
+            lastTiltY = rawTargetY;
+            setTilt({ x: rawTargetX, y: rawTargetY });
+          });
+        }
       }
     };
 
@@ -175,6 +191,7 @@ export default function App() {
       window.removeEventListener('resize', checkOrientation);
       window.removeEventListener('orientationchange', checkOrientation);
       window.removeEventListener('deviceorientation', handleOrientationMotion);
+      if (rAFId !== null) cancelAnimationFrame(rAFId);
     };
   }, [autoLandscapeStandby]);
 

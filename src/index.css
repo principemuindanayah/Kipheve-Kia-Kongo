@@ -278,8 +278,9 @@ button:active {
    SENSOR DE ROTAÇÃO E EFEITO 3D GIROSCÓPIO
    ========================================================================== */
 .gyro-interactive {
-    transition: transform 0.12s ease-out;
+    transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.25, 1);
     transform-style: preserve-3d;
+    backface-visibility: hidden;
     will-change: transform;
 }
 

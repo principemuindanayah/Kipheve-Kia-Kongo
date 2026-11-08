@@ -165,8 +165,9 @@
         }
 
         .gyro-interactive {
-            transition: transform 0.12s ease-out;
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.25, 1);
             transform-style: preserve-3d;
+            backface-visibility: hidden;
             will-change: transform;
         }
 
@@ -848,14 +849,26 @@
         window.addEventListener('resize', checkOrientationSensor);
         window.addEventListener('orientationchange', checkOrientationSensor);
 
-        // Sensor de Giroscópio (3D Tilt)
+        // Sensor de Giroscópio (3D Tilt) com interpolação suave e filtro de jitter
+        let lastRx = 0;
+        let lastRy = 0;
+        let gyroRAF = null;
+
         window.addEventListener('deviceorientation', e => {
             if (e.beta !== null && e.gamma !== null) {
                 const rx = Math.max(-10, Math.min(10, (e.beta - 45) * 0.2));
                 const ry = Math.max(-10, Math.min(10, e.gamma * 0.2));
-                const card = document.getElementById('standbyCard');
-                if (card) {
-                    card.style.transform = 'perspective(800px) rotateX(' + (-rx) + 'deg) rotateY(' + ry + 'deg)';
+
+                if (Math.abs(rx - lastRx) > 0.2 || Math.abs(ry - lastRy) > 0.2) {
+                    if (gyroRAF !== null) cancelAnimationFrame(gyroRAF);
+                    gyroRAF = requestAnimationFrame(() => {
+                        lastRx = rx;
+                        lastRy = ry;
+                        const card = document.getElementById('standbyCard');
+                        if (card) {
+                            card.style.transform = 'perspective(800px) rotateX(' + (-rx) + 'deg) rotateY(' + ry + 'deg)';
+                        }
+                    });
                 }
             }
         });
