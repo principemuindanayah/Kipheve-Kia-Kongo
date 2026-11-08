@@ -1,0 +1,6 @@
+{
+  "name": "Relógio Kongo",
+  "description": "Relógio e Calendário Cósmico Kongo, baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi. Funciona 100% offline com estética de luxo em basalto e ouro imperial, âncora Nvula 6008 e gerador de pacote standalone/APK.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Relógio Kongo</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icon.png">
+    <meta name="theme-color" content="#D4AF37">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        :root {
+            --bg-color: #080807;
+            --gold-primary: #FFFAC4;
+            --gold-secondary: #F0C63E;
+            --text-mins: #DFBE91;
+            --line-color: #54431B;
+            --date-color: #FFF1C2;
+            --credit-color: #8A784E;
+        }
+
+        body.light-mode {
+            --bg-color: #FDFBF7;
+            --gold-primary: #8C6D1F;
+            --gold-secondary: #594311;
+            --text-mins: #6E5B37;
+            --line-color: #D6C4A1;
+            --date-color: #4A3B18;
+            --credit-color: #8A7952;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--gold-primary);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            text-align: center;
+            transition: background 0.3s ease;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        h1 {
+            font-size: 18px;
+            color: var(--gold-secondary);
+            margin-bottom: 8px;
+            letter-spacing: 2px;
+        }
+
+        #hourDisplay {
+            font-size: 34px;
+            font-weight: bold;
+            margin: 20px 0;
+            line-height: 1.25;
+            white-space: pre-line;
+        }
+
+        #minDisplay {
+            font-size: 16px;
+            color: var(--text-mins);
+            margin-bottom: 20px;
+        }
+
+        .line {
+            width: 75%;
+            border-bottom: 1px dashed var(--line-color);
+            margin: 15px auto;
+        }
+
+        #dateDisplay {
+            font-size: 15px;
+            color: var(--date-color);
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+            white-space: pre-line;
+        }
+
+        #gregorianDisplay {
+            font-size: 13px;
+            color: var(--text-mins);
+            margin-bottom: 25px;
+            white-space: pre-line;
+        }
+
+        .buttons-container {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background-color: var(--gold-secondary);
+            color: #050505;
+            border: none;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 6px;
+            margin: 6px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: opacity 0.2s;
+        }
+
+        button:active {
+            opacity: 0.8;
+        }
+
+        .credits {
+            font-size: 10px;
+            color: var(--credit-color);
+            position: absolute;
+            bottom: 20px;
+            letter-spacing: 0.5px;
+            width: 100%;
+        }
+
+        #notificationModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0,0,0,0.85);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 16px;
+        }
+
+        .modal-box {
+            background-color: var(--bg-color);
+            border: 1px solid var(--gold-secondary);
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 360px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+        }
+
+        @keyframes fadeSoft {
+            0% {
+                opacity: 0.2;
+                filter: blur(1px);
+                transform: translateY(-2px);
+            }
+            100% {
+                opacity: 1;
+                filter: blur(0);
+                transform: translateY(0);
+            }
+        }
+
+        .fade-update {
+            animation: fadeSoft 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+            will-change: opacity, transform;
+        }
+
+        .gyro-interactive {
+            transition: transform 0.12s ease-out;
+            transform-style: preserve-3d;
+            will-change: transform;
+        }
+
+        .standby-container {
+            position: fixed;
+            inset: 0;
+            background-color: #000000;
+            color: var(--gold-primary);
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+        }
+
+        @keyframes standbyPulseGlow {
+            0%, 100% {
+                text-shadow: 0 0 20px rgba(212, 175, 55, 0.35), 0 0 40px rgba(212, 175, 55, 0.15);
+                filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.25));
+            }
+            50% {
+                text-shadow: 0 0 35px rgba(252, 238, 186, 0.7), 0 0 65px rgba(212, 175, 55, 0.4);
+                filter: drop-shadow(0 0 20px rgba(212, 175, 55, 0.45));
+            }
+        }
+
+        @keyframes chargingBoltPulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px #D4AF37); }
+            50% { transform: scale(1.25); filter: drop-shadow(0 0 10px #FCEEBA); }
+        }
+
+        @keyframes oledDriftSlow {
+            0% { transform: translate(0px, 0px); }
+            25% { transform: translate(3px, -2px); }
+            50% { transform: translate(-2px, 3px); }
+            75% { transform: translate(-3px, -2px); }
+            100% { transform: translate(0px, 0px); }
+        }
+
+        .standby-card {
+            background: radial-gradient(circle at center, #12100c 0%, #040404 100%);
+            border: 2px solid rgba(212, 175, 55, 0.35);
+            border-radius: 28px;
+            padding: 28px 36px;
+            max-width: 720px;
+            width: 95%;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.95), inset 0 0 30px rgba(212, 175, 55, 0.08);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            animation: oledDriftSlow 120s infinite ease-in-out;
+        }
+
+        .standby-digital-time {
+            font-size: clamp(54px, 13vw, 110px);
+            font-weight: 800;
+            line-height: 0.95;
+            letter-spacing: -2px;
+            color: var(--gold-secondary);
+            animation: standbyPulseGlow 4s infinite ease-in-out;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .standby-charging-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(212, 175, 55, 0.12);
+            border: 1px solid rgba(212, 175, 55, 0.45);
+            border-radius: 20px;
+            padding: 5px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: var(--gold-primary);
+            margin-bottom: 16px;
+        }
+
+        .standby-bolt {
+            display: inline-block;
+            color: var(--gold-secondary);
+            font-size: 16px;
+            animation: chargingBoltPulse 1.8s infinite ease-in-out;
+        }
+
+        .standby-switch-bar {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .standby-tab-btn {
+            background: transparent;
+            border: 1px solid var(--line-color);
+            color: var(--text-mins);
+            padding: 6px 14px;
+            font-size: 12px;
+            border-radius: 16px;
+            cursor: pointer;
+            box-shadow: none;
+            margin: 0;
+            transition: all 0.2s ease;
+        }
+
+        .standby-tab-btn.active {
+            background: var(--gold-secondary);
+            color: #050505;
+            border-color: var(--gold-secondary);
+            font-weight: bold;
+        }
+
+        .standby-close-btn {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            color: var(--text-mins);
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin: 0;
+            box-shadow: none;
+            font-size: 16px;
+        }
+
+        .widget-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.88);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .widget-modal-content {
+            background: radial-gradient(circle at top, #16120b 0%, #050505 100%);
+            border: 1.5px solid var(--gold-secondary);
+            border-radius: 24px;
+            padding: 24px;
+            max-width: 440px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+            position: relative;
+        }
+
+        .widget-preview-card {
+            background: #080808;
+            border: 1.5px solid rgba(212, 175, 55, 0.4);
+            border-radius: 20px;
+            padding: 16px;
+            margin: 12px 0;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>RELÓGIO KONGO</h1>
+
+    <div id="hourDisplay">--ª HORA<br>DA NOITE</div>
+    <div id="minDisplay">-- minutos • -- segundos</div>
+    
+    <div class="line"></div>
+    
+    <div id="dateDisplay">NVULA ---- • LUA • JORNADA</div>
+    
+    <div class="line"></div>
+    
+    <div id="gregorianDisplay">--:--:--<br>--/--/----</div>
+
+    <div class="buttons-container">
+        <button onclick="toggleTheme()">Mudar Tema</button>
+        <button onclick="openStandby()">Modo StandBy ⚡</button>
+        <button onclick="openWidgetModal()">Widgets 📱</button>
+        <button onclick="closeApp()">Fechar App</button>
+    </div>
+
+    <div style="margin-top: 8px; font-size: 11px; color: var(--text-mins); cursor: pointer;" onclick="toggleAutoLandscape()" id="rotationSensorBadge">
+        🔄 Sensor de Rotação: <span style="color: var(--gold-secondary); font-weight: bold;">StandBy em Paisagem Ativo</span>
+    </div>
+
+    <div class="credits">Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
+
+    <!-- MODO STANDBY ANIMADO -->
+    <div id="standbyOverlay" class="standby-container">
+        <button class="standby-close-btn" onclick="closeStandby()">✕</button>
+        <div class="standby-card" id="standbyCard">
+            <div class="standby-charging-badge">
+                <span class="standby-bolt">⚡</span>
+                <span id="standbyBatteryText">A Carregar • 100%</span>
+            </div>
+
+            <div id="standbyDigitalView">
+                <div style="font-size: 11px; color: var(--text-mins); letter-spacing: 2.5px; text-transform: uppercase; font-weight: 700; margin-bottom: 8px;">
+                    TEMPO CÓSMICO NTU
+                </div>
+                <div class="standby-digital-time" id="standbyTimeDigital">00:00:00</div>
+                <div id="standbyKongoHour" style="font-size: 22px; color: var(--gold-secondary); letter-spacing: 1.5px; margin-top: 10px; font-weight: 800; text-transform: uppercase; text-shadow: 0 0 16px rgba(212, 175, 55, 0.45);"></div>
+                <div id="standbyKongoDate" style="margin-top: 12px; padding: 8px 24px; background: rgba(212, 175, 55, 0.08); border-radius: 20px; border: 1px solid var(--line-color); font-size: 14px; color: var(--date-color); text-align: center; font-weight: 600; letter-spacing: 1px;"></div>
+            </div>
+
+            <div id="standbyAnalogView" style="display: none; align-items: center; justify-content: center; gap: 32px; flex-wrap: wrap; width: 100%; padding: 10px 0;">
+                <div style="position: relative; width: 180px; height: 180px;">
+                    <svg viewBox="0 0 200 200" width="180" height="180" style="filter: drop-shadow(0 0 12px rgba(212, 175, 55, 0.35));">
+                        <circle cx="100" cy="100" r="94" fill="#060606" stroke="var(--gold-secondary)" stroke-width="2.5" />
+                        <circle cx="100" cy="100" r="88" fill="none" stroke="var(--line-color)" stroke-width="1" stroke-dasharray="3 3" />
+                        <line x1="100" y1="16" x2="100" y2="184" stroke="rgba(212, 175, 55, 0.25)" stroke-width="1" />
+                        <line x1="16" y1="100" x2="184" y2="100" stroke="rgba(212, 175, 55, 0.25)" stroke-width="1" />
+                        <text x="100" y="34" fill="var(--gold-primary)" font-size="13" font-weight="bold" text-anchor="middle">12</text>
+                        <text x="176" y="104" fill="var(--gold-primary)" font-size="13" font-weight="bold" text-anchor="middle">3</text>
+                        <text x="100" y="174" fill="var(--gold-primary)" font-size="13" font-weight="bold" text-anchor="middle">6</text>
+                        <text x="24" y="104" fill="var(--gold-primary)" font-size="13" font-weight="bold" text-anchor="middle">9</text>
+                        <line id="analogHandHour" x1="100" y1="100" x2="100" y2="50" stroke="var(--gold-primary)" stroke-width="4" stroke-linecap="round" />
+                        <line id="analogHandMin" x1="100" y1="100" x2="100" y2="34" stroke="var(--gold-secondary)" stroke-width="2.5" stroke-linecap="round" />
+                        <line id="analogHandSec" x1="100" y1="115" x2="100" y2="28" stroke="#FCEEBA" stroke-width="1.2" stroke-linecap="round" />
+                        <circle cx="100" cy="100" r="5" fill="var(--gold-secondary)" stroke="#050505" stroke-width="1.5" />
+                    </svg>
+                </div>
+                <div style="text-align: left; min-width: 190px;">
+                    <div style="font-size: 11px; color: var(--text-mins); letter-spacing: 2px; text-transform: uppercase; font-weight: 700;">Tempo Cósmico NTU</div>
+                    <div id="analogKongoHour" style="font-size: 22px; font-weight: bold; color: var(--gold-secondary); margin: 6px 0; line-height: 1.2;"></div>
+                    <div id="analogKongoMinSec" style="font-size: 14px; color: var(--text-mins); margin-bottom: 8px;"></div>
+                    <div id="analogKongoDate" style="font-size: 14px; color: var(--date-color); font-weight: 600; border-top: 1px solid var(--line-color); padding-top: 8px; line-height: 1.4;"></div>
+                </div>
+            </div>
+
+            <div class="standby-switch-bar">
+                <button id="btnStandbyDigital" class="standby-tab-btn active" onclick="setStandbyMode('digital')">Digital Imperial</button>
+                <button id="btnStandbyAnalog" class="standby-tab-btn" onclick="setStandbyMode('analog')">Mostrador Dikenga</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE WIDGETS NO ECRÃ PRINCIPAL -->
+    <div id="widgetModal" class="widget-modal-overlay">
+        <div class="widget-modal-content">
+            <button class="standby-close-btn" onclick="closeWidgetModal()">✕</button>
+            <h2 style="font-size: 17px; color: var(--gold-secondary); font-weight: bold; margin-bottom: 6px;">WIDGETS NO ECRÃ PRINCIPAL</h2>
+            <p style="font-size: 12px; color: var(--text-mins); margin-bottom: 14px;">Mantenha o tempo cósmico Kongo visível diretamente no ecrã de início do seu telemóvel.</p>
+
+            <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 14px;">
+                <button id="btnWidget4x2" class="standby-tab-btn active" onclick="switchWidgetPreview('4x2')">Panorâmico (4x2)</button>
+                <button id="btnWidget2x2" class="standby-tab-btn" onclick="switchWidgetPreview('2x2')">Quadrado (2x2)</button>
+            </div>
+
+            <!-- Preview 4x2 -->
+            <div id="widgetPreview4x2" class="widget-preview-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 11px; color: var(--gold-secondary); font-weight: bold; letter-spacing: 1px;">RELÓGIO KONGO</span>
+                    <span style="font-size: 10px; color: var(--text-mins);" id="widgetBatteryText">⚡ 100%</span>
+                </div>
+                <div id="widgetTimeDigital" style="font-size: 28px; font-weight: bold; color: var(--gold-primary); line-height: 1;">18:24</div>
+                <div id="widgetKongoHour" style="font-size: 14px; font-weight: bold; color: var(--gold-secondary); margin: 6px 0 2px;">0ª HORA DA NOITE</div>
+                <div id="widgetKongoDate" style="font-size: 11px; color: var(--date-color);">NVULA 6008 • LUA • JORNADA</div>
+            </div>
+
+            <!-- Preview 2x2 -->
+            <div id="widgetPreview2x2" class="widget-preview-card" style="display: none; max-width: 200px; margin: 12px auto; text-align: center;">
+                <div style="font-size: 10px; color: var(--gold-secondary); font-weight: bold; margin-bottom: 6px;">R. KONGO</div>
+                <div id="widgetTimeDigital2x2" style="font-size: 24px; font-weight: bold; color: var(--gold-primary);">18:24</div>
+                <div id="widgetKongoHour2x2" style="font-size: 11px; color: var(--gold-secondary); font-weight: bold;">0ª HORA</div>
+                <div id="widgetKongoDate2x2" style="font-size: 9px; color: var(--date-color); margin-top: 4px;">NVULA 6008</div>
+            </div>
+
+            <div style="margin-top: 16px;">
+                <button onclick="pinWidgetToHomeScreen()" style="background-color: var(--gold-secondary); color: #050505; width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; font-size: 13px; margin-bottom: 10px;">
+                    📌 Adicionar Widget ao Ecrã Inicial
+                </button>
+                <div id="widgetToast" style="display: none; background: rgba(212, 175, 55, 0.15); border: 1px solid var(--gold-secondary); border-radius: 8px; padding: 10px; font-size: 12px; color: var(--gold-primary); margin-bottom: 10px;">
+                    ✓ No Android: Toque sem soltar no seu ecrã de início &gt; Escolha <strong>Widgets</strong> &gt; Selecione <strong>Relógio Kongo</strong>.
+                </div>
+                <p style="font-size: 11px; color: var(--text-mins); line-height: 1.4;">
+                    Ao instalar a aplicação ou gerar o APK final, o widget de tempo cósmico fica permanentemente disponível no seletor de widgets do telemóvel.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Registro do Service Worker para suporte PWA / 100% offline
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
+            });
+        }
+
+        const CFG = {
+            anchorLocal: "2026-04-02T18:00:00",
+            nvula: 6008
+        };
+
+        const LUAS = [
+            "Yahandi", "Lubeni", "Ngudi", "Ezala", "Nuanini", "Masesi",
+            "Nsimbanu", "Lemba", "Isekele", "Zibulani", "Yasah", "Bengami"
+        ];
+
+        function getOrdinal(n) {
+            return n + "ª";
+        }
+
+        function calculateNtu(date = new Date()) {
+            const anchor = new Date(CFG.anchorLocal);
+            const elapsed = date.getTime() - anchor.getTime();
+            const jornadaIndex = Math.floor(elapsed / 86400000);
+            const jornada = ((jornadaIndex % 30) + 30) % 30 + 1;
+            const luaIndex = Math.floor(jornadaIndex / 30);
+            const lua = LUAS[((luaIndex % 12) + 12) % 12];
+            const nvula = CFG.nvula + Math.floor(jornadaIndex / 360);
+
+            const h = date.getHours();
+            let hourNumber, period;
+            if (h >= 18) {
+                hourNumber = h - 18;
+                period = "DA NOITE";
+            } else if (h < 6) {
+                hourNumber = h + 6;
+                period = "DA NOITE";
+            } else {
+                hourNumber = h - 6;
+                period = "DO DIA";
+            }
+
+            return {
+                hourNumber,
+                period,
+                horaNtu: getOrdinal(hourNumber) + " HORA " + period,
+                jornada,
+                jornadaOrdinal: getOrdinal(jornada),
+                lua: lua.toUpperCase(),
+                nvula,
+                dataNtu: "NVULA " + nvula + " • " + lua.toUpperCase() + " • " + getOrdinal(jornada) + " JORNADA"
+            };
+        }
+
+        // Notificação do app apresenta hora e data NTU
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const ntu = calculateNtu();
+                const msg = "Relógio Kongo • Sabedoria Ancestral\n\nHora NTU: " + ntu.horaNtu + "\nData NTU: " + ntu.dataNtu + "\n\nBaseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi";
+                
+                try {
+                    alert(msg);
+                } catch (e) {
+                    showNotificationModal(ntu);
+                }
+
+                // Notificação de sistema do telemóvel/PWA
+                if ('Notification' in window) {
+                    if (Notification.permission === 'granted') {
+                        try {
+                            new Notification("Relógio Kongo • Tempo NTU", {
+                                body: ntu.horaNtu + "\n" + ntu.dataNtu,
+                                icon: 'icon.png'
+                            });
+                        } catch (e) {}
+                    } else if (Notification.permission !== 'denied') {
+                        Notification.requestPermission().then(permission => {
+                            if (permission === 'granted') {
+                                try {
+                                    new Notification("Relógio Kongo • Tempo NTU", {
+                                        body: ntu.horaNtu + "\n" + ntu.dataNtu,
+                                        icon: 'icon.png'
+                                    });
+                                } catch (e) {}
+                            }
+                        });
+                    }
+                }
+            }, 300);
+        });
+
+        function showNotificationModal(ntu) {
+            document.getElementById('modalHoraNtu').innerText = "Hora NTU: " + ntu.horaNtu;
+            document.getElementById('modalDataNtu').innerText = "Data NTU: " + ntu.dataNtu;
+            document.getElementById('notificationModal').style.display = 'flex';
+        }
+
+        function closeNotification() {
+            document.getElementById('notificationModal').style.display = 'none';
+        }
+
+        function closeApp() {
+            if (window.navigator && window.navigator.app && typeof window.navigator.app.exitApp === 'function') {
+                window.navigator.app.exitApp();
+            } else {
+                window.close();
+                setTimeout(() => {
+                    if (!document.hidden) {
+                        window.location.href = "about:blank";
+                    }
+                }, 150);
+            }
+        }
+
+        let isDarkMode = true;
+        let currentIntensity = 100;
+
+        function applyColorIntensity(intensity, isDark) {
+            const f = intensity / 100;
+            const root = document.documentElement;
+
+            if (isDark) {
+                let bgR = 5, bgG = 5, bgB = 5;
+                if (intensity <= 100) {
+                    const ratio = (intensity - 50) / 50;
+                    bgR = Math.max(0, Math.round(5 * ratio));
+                    bgG = Math.max(0, Math.round(5 * ratio));
+                    bgB = Math.max(0, Math.round(5 * ratio));
+                } else {
+                    const ratio = (intensity - 100) / 50;
+                    bgR = Math.min(255, Math.round(5 + 17 * ratio));
+                    bgG = Math.min(255, Math.round(5 + 14 * ratio));
+                    bgB = Math.min(255, Math.round(5 + 7 * ratio));
+                }
+                const bgColor = `rgb(${bgR}, ${bgG}, ${bgB})`;
+
+                const gpR = Math.min(255, Math.round(252 * (0.6 + 0.4 * f)));
+                const gpG = Math.min(255, Math.round(238 * (0.6 + 0.4 * f)));
+                const gpB = Math.min(255, Math.round(186 * (0.6 + 0.4 * f)));
+                const goldPrimary = `rgb(${gpR}, ${gpG}, ${gpB})`;
+
+                const gsR = Math.min(255, Math.round(212 * f));
+                const gsG = Math.min(255, Math.round(175 * f));
+                const gsB = Math.min(255, Math.round(55 * f));
+                const goldSecondary = `rgb(${gsR}, ${gsG}, ${gsB})`;
+
+                const tmR = Math.min(255, Math.round(197 * f));
+                const tmG = Math.min(255, Math.round(168 * f));
+                const tmB = Math.min(255, Math.round(128 * f));
+                const textMins = `rgb(${tmR}, ${tmG}, ${tmB})`;
+
+                const lnR = Math.min(255, Math.round(74 * f));
+                const lnG = Math.min(255, Math.round(59 * f));
+                const lnB = Math.min(255, Math.round(24 * f));
+                const lineColor = `rgb(${lnR}, ${lnG}, ${lnB})`;
+
+                const dtR = Math.min(255, Math.round(230 * f));
+                const dtG = Math.min(255, Math.round(213 * f));
+                const dtB = Math.min(255, Math.round(172 * f));
+                const dateColor = `rgb(${dtR}, ${dtG}, ${dtB})`;
+
+                const crR = Math.min(255, Math.round(122 * f));
+                const crG = Math.min(255, Math.round(106 * f));
+                const crB = Math.min(255, Math.round(69 * f));
+                const creditColor = `rgb(${crR}, ${crG}, ${crB})`;
+
+                root.style.setProperty('--bg-color', bgColor);
+                root.style.setProperty('--gold-primary', goldPrimary);
+                root.style.setProperty('--gold-secondary', goldSecondary);
+                root.style.setProperty('--text-mins', textMins);
+                root.style.setProperty('--line-color', lineColor);
+                root.style.setProperty('--date-color', dateColor);
+                root.style.setProperty('--credit-color', creditColor);
+            } else {
+                const ratio = (intensity - 50) / 100;
+                const bg = Math.round(253 - 10 * (1 - ratio));
+                root.style.setProperty('--bg-color', `rgb(${bg}, ${bg - 2}, ${bg - 6})`);
+                root.style.setProperty('--gold-primary', `rgb(${Math.min(255, Math.round(140 * f))}, ${Math.min(255, Math.round(109 * f))}, ${Math.min(255, Math.round(31 * f))})`);
+                root.style.setProperty('--gold-secondary', `rgb(${Math.min(255, Math.round(89 * f))}, ${Math.min(255, Math.round(67 * f))}, ${Math.min(255, Math.round(17 * f))})`);
+                root.style.setProperty('--text-mins', `rgb(${Math.min(255, Math.round(110 * f))}, ${Math.min(255, Math.round(91 * f))}, ${Math.min(255, Math.round(55 * f))})`);
+                root.style.setProperty('--line-color', `rgb(${Math.min(255, Math.round(214 * f))}, ${Math.min(255, Math.round(196 * f))}, ${Math.min(255, Math.round(161 * f))})`);
+                root.style.setProperty('--date-color', `rgb(${Math.min(255, Math.round(74 * f))}, ${Math.min(255, Math.round(59 * f))}, ${Math.min(255, Math.round(24 * f))})`);
+                root.style.setProperty('--credit-color', `rgb(${Math.min(255, Math.round(138 * f))}, ${Math.min(255, Math.round(121 * f))}, ${Math.min(255, Math.round(82 * f))})`);
+            }
+        }
+
+        const FIXED_INTENSITY = 113;
+        applyColorIntensity(FIXED_INTENSITY, isDarkMode);
+
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle("light-mode", !isDarkMode);
+            applyColorIntensity(FIXED_INTENSITY, isDarkMode);
+        }
+
+        let lastHour = -1;
+        let lastMinute = -1;
+
+        function updateClock() {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            const ntu = calculateNtu(now);
+
+            const hourEl = document.getElementById("hourDisplay");
+            if (hourEl) {
+                const newHourText = getOrdinal(ntu.hourNumber) + " HORA\n" + ntu.period;
+                if (hourEl.innerText !== newHourText) {
+                    hourEl.innerText = newHourText;
+                }
+                if (lastHour !== -1 && currentHour !== lastHour) {
+                    hourEl.classList.remove("fade-update");
+                    void hourEl.offsetWidth;
+                    hourEl.classList.add("fade-update");
+                }
+            }
+
+            const minEl = document.getElementById("minDisplay");
+            if (minEl) {
+                minEl.innerText = String(now.getMinutes()).padStart(2, '0') + " minutos • " + String(now.getSeconds()).padStart(2, '0') + " segundos";
+                if (lastMinute !== -1 && currentMinute !== lastMinute) {
+                    minEl.classList.remove("fade-update");
+                    void minEl.offsetWidth;
+                    minEl.classList.add("fade-update");
+                }
+            }
+
+            const dateEl = document.getElementById("dateDisplay");
+            if (dateEl) {
+                const newDateText = "NVULA " + ntu.nvula + "\n" + ntu.lua + " • " + ntu.jornadaOrdinal + " JORNADA";
+                if (dateEl.innerText !== newDateText) {
+                    dateEl.innerText = newDateText;
+                    if (lastHour !== -1) {
+                        dateEl.classList.remove("fade-update");
+                        void dateEl.offsetWidth;
+                        dateEl.classList.add("fade-update");
+                    }
+                }
+            }
+
+            lastHour = currentHour;
+            lastMinute = currentMinute;
+
+            const d = String(now.getDate()).padStart(2, '0');
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const y = now.getFullYear();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
+            
+            // Atualização do Modo StandBy com Hora e Data NTU Exclusivas
+            const digitalEl = document.getElementById('standbyTimeDigital');
+            if (digitalEl) {
+                digitalEl.innerHTML = '<span>' + String(ntu.hourNumber).padStart(2, '0') + '</span>' +
+                    '<span style="opacity: ' + (now.getSeconds() % 2 === 0 ? '1' : '0.35') + '; margin: 0 4px; color: var(--gold-secondary);">:</span>' +
+                    '<span>' + mm + '</span>' +
+                    '<span style="font-size: 24px; opacity: 0.85; margin-left: 6px; color: var(--text-mins); vertical-align: middle;">:' + ss + '</span>';
+            }
+            const sKongoHour = document.getElementById('standbyKongoHour');
+            if (sKongoHour) sKongoHour.innerText = ntu.horaNtu;
+            const sKongoDate = document.getElementById('standbyKongoDate');
+            if (sKongoDate) sKongoDate.innerText = ntu.dataNtu;
+
+            // Ponteiros analógicos com Painel NTU Exclusivo
+            const sSec = now.getSeconds() * 6;
+            const sMin = now.getMinutes() * 6 + now.getSeconds() * 0.1;
+            const sHr = (now.getHours() % 12) * 30 + now.getMinutes() * 0.5;
+            const hSec = document.getElementById('analogHandSec');
+            if (hSec) hSec.setAttribute('transform', 'rotate(' + sSec + ' 100 100)');
+            const hMin = document.getElementById('analogHandMin');
+            if (hMin) hMin.setAttribute('transform', 'rotate(' + sMin + ' 100 100)');
+            const hHour = document.getElementById('analogHandHour');
+            if (hHour) hHour.setAttribute('transform', 'rotate(' + sHr + ' 100 100)');
+            const aKongoHour = document.getElementById('analogKongoHour');
+            if (aKongoHour) aKongoHour.innerText = ntu.horaNtu;
+            const aKongoMinSec = document.getElementById('analogKongoMinSec');
+            if (aKongoMinSec) aKongoMinSec.innerText = mm + " minutos • " + ss + " segundos";
+            const aKongoDate = document.getElementById('analogKongoDate');
+            if (aKongoDate) aKongoDate.innerText = ntu.dataNtu;
+
+            // Widget Previews
+            const wTime = document.getElementById('widgetTimeDigital');
+            if (wTime) wTime.innerText = hhMm;
+            const wHour = document.getElementById('widgetKongoHour');
+            if (wHour) wHour.innerText = ntu.horaNtu;
+            const wDate = document.getElementById('widgetKongoDate');
+            if (wDate) wDate.innerText = ntu.dataNtu;
+            const wTime2 = document.getElementById('widgetTimeDigital2x2');
+            if (wTime2) wTime2.innerText = hhMm;
+            const wHour2 = document.getElementById('widgetKongoHour2x2');
+            if (wHour2) wHour2.innerText = getOrdinal(ntu.hourNumber) + " HORA";
+            const wDate2 = document.getElementById('widgetKongoDate2x2');
+            if (wDate2) wDate2.innerText = "NVULA " + ntu.nvula;
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // ==========================================
+        // MODO STANDBY & SENSOR DE ROTAÇÃO
+        // ==========================================
+        let isStandbyOpen = false;
+        let standbyMode = 'digital';
+        let autoLandscape = true;
+        let batteryPct = 100;
+        let isCharging = true;
+
+        function toggleAutoLandscape() {
+            autoLandscape = !autoLandscape;
+            const badge = document.getElementById('rotationSensorBadge');
+            if (badge) {
+                badge.innerHTML = '🔄 Sensor de Rotação: <span style="color: ' + (autoLandscape ? 'var(--gold-secondary)' : '#666') + '; font-weight: bold;">' + (autoLandscape ? 'StandBy em Paisagem Ativo' : 'Manual') + '</span>';
+            }
+        }
+
+        function openStandby() {
+            isStandbyOpen = true;
+            document.getElementById('standbyOverlay').style.display = 'flex';
+        }
+
+        function closeStandby() {
+            isStandbyOpen = false;
+            document.getElementById('standbyOverlay').style.display = 'none';
+        }
+
+        function setStandbyMode(mode) {
+            standbyMode = mode;
+            document.getElementById('btnStandbyDigital').classList.toggle('active', mode === 'digital');
+            document.getElementById('btnStandbyAnalog').classList.toggle('active', mode === 'analog');
+            document.getElementById('standbyDigitalView').style.display = mode === 'digital' ? 'block' : 'none';
+            document.getElementById('standbyAnalogView').style.display = mode === 'analog' ? 'flex' : 'none';
+        }
+
+        // ==========================================
+        // WIDGETS NO ECRÃ PRINCIPAL
+        // ==========================================
+        function openWidgetModal() {
+            document.getElementById('widgetModal').style.display = 'flex';
+        }
+
+        function closeWidgetModal() {
+            document.getElementById('widgetModal').style.display = 'none';
+        }
+
+        function switchWidgetPreview(type) {
+            document.getElementById('btnWidget4x2').classList.toggle('active', type === '4x2');
+            document.getElementById('btnWidget2x2').classList.toggle('active', type === '2x2');
+            document.getElementById('widgetPreview4x2').style.display = type === '4x2' ? 'block' : 'none';
+            document.getElementById('widgetPreview2x2').style.display = type === '2x2' ? 'block' : 'none';
+        }
+
+        function pinWidgetToHomeScreen() {
+            const toast = document.getElementById('widgetToast');
+            if (toast) {
+                toast.style.display = 'block';
+                setTimeout(() => { toast.style.display = 'none'; }, 5000);
+            }
+        }
+
+        // Deteção da Bateria
+        if (navigator.getBattery) {
+            navigator.getBattery().then(bat => {
+                isCharging = bat.charging;
+                batteryPct = Math.round(bat.level * 100);
+                const txt = (isCharging ? 'A Carregar' : 'Bateria') + ' • ' + batteryPct + '%';
+                const el = document.getElementById('standbyBatteryText');
+                if (el) el.innerText = txt;
+                const wel = document.getElementById('widgetBatteryText');
+                if (wel) wel.innerText = '⚡ ' + batteryPct + '%';
+            }).catch(() => {});
+        }
+
+        // Sensor de Rotação (Landscape)
+        function checkOrientationSensor() {
+            const landscape = window.innerWidth > window.innerHeight;
+            if (landscape && autoLandscape && !isStandbyOpen) {
+                openStandby();
+            }
+        }
+        window.addEventListener('resize', checkOrientationSensor);
+        window.addEventListener('orientationchange', checkOrientationSensor);
+
+        // Sensor de Giroscópio (3D Tilt)
+        window.addEventListener('deviceorientation', e => {
+            if (e.beta !== null && e.gamma !== null) {
+                const rx = Math.max(-10, Math.min(10, (e.beta - 45) * 0.2));
+                const ry = Math.max(-10, Math.min(10, e.gamma * 0.2));
+                const card = document.getElementById('standbyCard');
+                if (card) {
+                    card.style.transform = 'perspective(800px) rotateX(' + (-rx) + 'deg) rotateY(' + ry + 'deg)';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

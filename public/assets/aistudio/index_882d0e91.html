@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Relógio Kongo</title>
+    <style>
+        :root {
+            --bg-color: #050505;
+            --gold-primary: #FCEEBA;
+            --gold-secondary: #D4AF37;
+            --text-mins: #C5A880;
+            --line-color: #4A3B18;
+            --date-color: #E6D5AC;
+            --credit-color: #7A6A45;
+        }
+
+        body.light-mode {
+            --bg-color: #FDFBF7;
+            --gold-primary: #8C6D1F;
+            --gold-secondary: #594311;
+            --text-mins: #6E5B37;
+            --line-color: #D6C4A1;
+            --date-color: #4A3B18;
+            --credit-color: #8A7952;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--gold-primary);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            text-align: center;
+            transition: background 0.3s ease;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        h1 {
+            font-size: 18px;
+            color: var(--gold-secondary);
+            margin-bottom: 8px;
+            letter-spacing: 2px;
+        }
+
+        #hourDisplay {
+            font-size: 34px;
+            font-weight: bold;
+            margin: 20px 0;
+            line-height: 1.25;
+            white-space: pre-line;
+        }
+
+        #minDisplay {
+            font-size: 16px;
+            color: var(--text-mins);
+            margin-bottom: 20px;
+        }
+
+        .line {
+            width: 75%;
+            border-bottom: 1px dashed var(--line-color);
+            margin: 15px auto;
+        }
+
+        #dateDisplay {
+            font-size: 15px;
+            color: var(--date-color);
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+            white-space: pre-line;
+        }
+
+        #gregorianDisplay {
+            font-size: 13px;
+            color: var(--text-mins);
+            margin-bottom: 25px;
+            white-space: pre-line;
+        }
+
+        button {
+            background-color: var(--gold-secondary);
+            color: #050505;
+            border: none;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 6px;
+            margin: 6px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: opacity 0.2s;
+        }
+
+        button:active {
+            opacity: 0.8;
+        }
+
+        .credits {
+            font-size: 10px;
+            color: var(--credit-color);
+            position: absolute;
+            bottom: 20px;
+            letter-spacing: 0.5px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>RELÓGIO KONGO</h1>
+
+    <div id="hourDisplay">--ª HORA<br>DA NOITE</div>
+    <div id="minDisplay">-- minutos • -- segundos</div>
+    
+    <div class="line"></div>
+    
+    <div id="dateDisplay">NVULA ---- • LUA • JORNADA</div>
+    
+    <div class="line"></div>
+    
+    <div id="gregorianDisplay">--:--:--<br>--/--/----</div>
+
+    <button onclick="toggleTheme()">Mudar Tema</button>
+
+    <div class="credits">Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
+
+    <script>
+        // Alerta solene inicial obrigatório
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                alert("Relógio Kongo • Sabedoria Ancestral\n\nBaseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi");
+            }, 300);
+        });
+
+        const CFG = {
+            anchorLocal: "2026-04-02T18:00:00",
+            nvula: 6008
+        };
+
+        const LUAS = [
+            "Yahandi", "Lubeni", "Ngudi", "Ezala", "Nuanini", "Masesi",
+            "Nsimbanu", "Lemba", "Isekele", "Zibulani", "Yasah", "Bengami"
+        ];
+
+        let isDarkMode = true;
+
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle("light-mode", !isDarkMode);
+        }
+
+        function getOrdinal(n) {
+            return n + "ª";
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const anchor = new Date(CFG.anchorLocal);
+            const elapsed = now.getTime() - anchor.getTime();
+            const jornadaIndex = Math.floor(elapsed / 86400000);
+            const jornada = ((jornadaIndex % 30) + 30) % 30 + 1;
+            const luaIndex = Math.floor(jornadaIndex / 30);
+            const lua = LUAS[((luaIndex % 12) + 12) % 12];
+            const nvula = CFG.nvula + Math.floor(jornadaIndex / 360);
+
+            const h = now.getHours();
+            let hourNumber, period;
+            if (h >= 18) {
+                hourNumber = h - 18;
+                period = "DA NOITE";
+            } else if (h < 6) {
+                hourNumber = h + 6;
+                period = "DA NOITE";
+            } else {
+                hourNumber = h - 6;
+                period = "DO DIA";
+            }
+
+            document.getElementById("hourDisplay").innerText = getOrdinal(hourNumber) + " HORA\n" + period;
+            document.getElementById("minDisplay").innerText = String(now.getMinutes()).padStart(2, '0') + " minutos • " + String(now.getSeconds()).padStart(2, '0') + " segundos";
+            document.getElementById("dateDisplay").innerText = "NVULA " + nvula + "\n" + lua.toUpperCase() + " • " + getOrdinal(jornada) + " JORNADA";
+
+            const d = String(now.getDate()).padStart(2, '0');
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const y = now.getFullYear();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
+            
+            document.getElementById("gregorianDisplay").innerText = hh + ":" + mm + ":" + ss + "\n" + d + "/" + m + "/" + y;
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+    </script>
+</body>
+</html>

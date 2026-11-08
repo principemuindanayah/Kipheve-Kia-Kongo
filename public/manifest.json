@@ -1,0 +1,70 @@
+{
+  "name": "Relógio Kongo",
+  "short_name": "R. Kongo",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#050505",
+  "theme_color": "#D4AF37",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Modo StandBy",
+      "short_name": "StandBy",
+      "description": "Ativar Modo StandBy com carregamento e paisagem",
+      "url": "./index.html?mode=standby",
+      "icons": [{ "src": "icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Tempo Cósmico NTU",
+      "short_name": "Tempo NTU",
+      "description": "Consultar hora e data cósmica Kongo",
+      "url": "./index.html?mode=ntu",
+      "icons": [{ "src": "icon.png", "sizes": "192x192" }]
+    }
+  ],
+  "widgets": [
+    {
+      "name": "Relógio Kongo Widget",
+      "short_name": "R. Kongo",
+      "description": "Widget cósmico no ecrã principal",
+      "tag": "kongo-clock-widget",
+      "template": "widget",
+      "ms_ac_template": "widget.json",
+      "data": "widget-data.json",
+      "type": "application/json",
+      "screenshots": [
+        {
+          "src": "icon.png",
+          "sizes": "512x512",
+          "label": "Relógio Kongo Widget"
+        }
+      ],
+      "icons": [
+        {
+          "src": "icon.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#050505"/>
+  <circle cx="256" cy="256" r="236" fill="none" stroke="#D4AF37" stroke-width="8"/>
+  <circle cx="256" cy="256" r="216" fill="none" stroke="#4A3B18" stroke-width="2" stroke-dasharray="6 6"/>
+  <circle cx="256" cy="256" r="180" fill="#0c0c0c" stroke="#D4AF37" stroke-width="3"/>
+  
+  <!-- Kongo Dikenga / Sacred Cross & Rays -->
+  <line x1="256" y1="96" x2="256" y2="416" stroke="#D4AF37" stroke-width="3" stroke-linecap="round"/>
+  <line x1="96" y1="256" x2="416" y2="256" stroke="#D4AF37" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Sacred Solar / Lunar Nodes -->
+  <circle cx="256" cy="116" r="12" fill="#FCEEBA" stroke="#D4AF37" stroke-width="2"/>
+  <circle cx="396" cy="256" r="12" fill="#FCEEBA" stroke="#D4AF37" stroke-width="2"/>
+  <circle cx="256" cy="396" r="12" fill="#FCEEBA" stroke="#D4AF37" stroke-width="2"/>
+  <circle cx="116" cy="256" r="12" fill="#FCEEBA" stroke="#D4AF37" stroke-width="2"/>
+  
+  <!-- Royal Crown Motif -->
+  <path d="M 196 230 L 226 270 L 256 210 L 286 270 L 316 230 L 310 286 L 202 286 Z" fill="#D4AF37" stroke="#FCEEBA" stroke-width="2"/>
+  <circle cx="256" cy="256" r="10" fill="#050505" stroke="#FCEEBA" stroke-width="2"/>
+  
+  <!-- Text Kongo -->
+  <text x="256" y="340" font-family="'Segoe UI', sans-serif" font-size="28" font-weight="bold" fill="#FCEEBA" text-anchor="middle" letter-spacing="6">KONGO</text>
+  <text x="256" y="366" font-family="'Segoe UI', sans-serif" font-size="14" fill="#C5A880" text-anchor="middle" letter-spacing="3">6008</text>
+</svg>

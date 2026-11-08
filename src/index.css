@@ -1,0 +1,339 @@
+@import "tailwindcss";
+
+:root {
+    --bg-color: #080807;
+    --gold-primary: #FFFAC4;
+    --gold-secondary: #F0C63E;
+    --text-mins: #DFBE91;
+    --line-color: #54431B;
+    --date-color: #FFF1C2;
+    --credit-color: #8A784E;
+}
+
+body.light-mode {
+    --bg-color: #FDFBF7;
+    --gold-primary: #8C6D1F;
+    --gold-secondary: #594311;
+    --text-mins: #6E5B37;
+    --line-color: #D6C4A1;
+    --date-color: #4A3B18;
+    --credit-color: #8A7952;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--gold-primary);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+    overflow: hidden;
+    text-align: center;
+    transition: background 0.3s ease;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+h1 {
+    font-size: 18px;
+    color: var(--gold-secondary);
+    margin-bottom: 8px;
+    letter-spacing: 2px;
+}
+
+#hourDisplay {
+    font-size: 34px;
+    font-weight: bold;
+    margin: 20px 0;
+    line-height: 1.25;
+    white-space: pre-line;
+}
+
+#minDisplay {
+    font-size: 16px;
+    color: var(--text-mins);
+    margin-bottom: 20px;
+}
+
+.line {
+    width: 75%;
+    border-bottom: 1px dashed var(--line-color);
+    margin: 15px auto;
+}
+
+#dateDisplay {
+    font-size: 15px;
+    color: var(--date-color);
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+    white-space: pre-line;
+}
+
+#gregorianDisplay {
+    font-size: 13px;
+    color: var(--text-mins);
+    margin-bottom: 25px;
+    white-space: pre-line;
+}
+
+button {
+    background-color: var(--gold-secondary);
+    color: #050505;
+    border: none;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 6px;
+    margin: 6px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    transition: opacity 0.2s;
+}
+
+button:active {
+    opacity: 0.8;
+}
+
+.credits {
+    font-size: 10px;
+    color: var(--credit-color);
+    position: absolute;
+    bottom: 20px;
+    letter-spacing: 0.5px;
+    width: 100%;
+}
+
+@keyframes fadeSoft {
+    0% {
+        opacity: 0.2;
+        filter: blur(1px);
+        transform: translateY(-2px);
+    }
+    100% {
+        opacity: 1;
+        filter: blur(0);
+        transform: translateY(0);
+    }
+}
+
+.fade-update {
+    animation: fadeSoft 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    will-change: opacity, transform;
+}
+
+/* ==========================================================================
+   MODO STANDBY (CARREGAMENTO / EXIBIÇÃO EM PAISAGEM)
+   ========================================================================== */
+.standby-container {
+    position: fixed;
+    inset: 0;
+    background-color: #000000;
+    color: var(--gold-primary);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow: hidden;
+}
+
+@keyframes standbyPulseGlow {
+    0%, 100% {
+        text-shadow: 0 0 20px rgba(212, 175, 55, 0.35), 0 0 40px rgba(212, 175, 55, 0.15);
+        filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.25));
+    }
+    50% {
+        text-shadow: 0 0 35px rgba(252, 238, 186, 0.7), 0 0 65px rgba(212, 175, 55, 0.4);
+        filter: drop-shadow(0 0 20px rgba(212, 175, 55, 0.45));
+    }
+}
+
+@keyframes chargingBoltPulse {
+    0%, 100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 4px #D4AF37);
+    }
+    50% {
+        transform: scale(1.25);
+        filter: drop-shadow(0 0 10px #FCEEBA);
+    }
+}
+
+@keyframes oledDriftSlow {
+    0% { transform: translate(0px, 0px); }
+    25% { transform: translate(3px, -2px); }
+    50% { transform: translate(-2px, 3px); }
+    75% { transform: translate(-3px, -2px); }
+    100% { transform: translate(0px, 0px); }
+}
+
+.standby-card {
+    background: radial-gradient(circle at center, #12100c 0%, #040404 100%);
+    border: 2px solid rgba(212, 175, 55, 0.35);
+    border-radius: 28px;
+    padding: 28px 36px;
+    max-width: 720px;
+    width: 95%;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.95), inset 0 0 30px rgba(212, 175, 55, 0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    animation: oledDriftSlow 120s infinite ease-in-out;
+}
+
+.standby-digital-time {
+    font-size: clamp(54px, 13vw, 110px);
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: -2px;
+    color: var(--gold-secondary);
+    animation: standbyPulseGlow 4s infinite ease-in-out;
+    font-variant-numeric: tabular-nums;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.standby-charging-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(212, 175, 55, 0.12);
+    border: 1px solid rgba(212, 175, 55, 0.45);
+    border-radius: 20px;
+    padding: 5px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--gold-primary);
+    margin-bottom: 16px;
+}
+
+.standby-bolt {
+    display: inline-block;
+    color: var(--gold-secondary);
+    font-size: 16px;
+    animation: chargingBoltPulse 1.8s infinite ease-in-out;
+}
+
+.standby-switch-bar {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.standby-tab-btn {
+    background: transparent;
+    border: 1px solid var(--line-color);
+    color: var(--text-mins);
+    padding: 6px 14px;
+    font-size: 12px;
+    border-radius: 16px;
+    cursor: pointer;
+    box-shadow: none;
+    margin: 0;
+    transition: all 0.2s ease;
+}
+
+.standby-tab-btn.active {
+    background: var(--gold-secondary);
+    color: #050505;
+    border-color: var(--gold-secondary);
+    font-weight: bold;
+}
+
+.standby-close-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    color: var(--text-mins);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin: 0;
+    box-shadow: none;
+    font-size: 16px;
+    transition: background 0.2s, color 0.2s;
+}
+
+.standby-close-btn:hover {
+    background: rgba(212, 175, 55, 0.2);
+    color: var(--gold-primary);
+}
+
+/* ==========================================================================
+   SENSOR DE ROTAÇÃO E EFEITO 3D GIROSCÓPIO
+   ========================================================================== */
+.gyro-interactive {
+    transition: transform 0.12s ease-out;
+    transform-style: preserve-3d;
+    will-change: transform;
+}
+
+/* ==========================================================================
+   WIDGETS NO ECRÃ PRINCIPAL
+   ========================================================================== */
+.widget-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.88);
+    backdrop-filter: blur(8px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    animation: fadeIn 0.25s ease-out;
+}
+
+.widget-modal-content {
+    background: radial-gradient(circle at top, #16120b 0%, #050505 100%);
+    border: 1.5px solid var(--gold-secondary);
+    border-radius: 24px;
+    padding: 24px;
+    max-width: 440px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), inset 0 0 25px rgba(212, 175, 55, 0.08);
+    position: relative;
+}
+
+.widget-preview-card {
+    background: #080808;
+    border: 1.5px solid rgba(212, 175, 55, 0.4);
+    border-radius: 20px;
+    padding: 16px;
+    margin: 12px 0;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+    position: relative;
+    overflow: hidden;
+}
+
+.widget-preview-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold-primary), transparent);
+}
+
+
+
+
