@@ -10,6 +10,98 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- Importação do Firebase SDK versão Compat (Mais estável para WebApps diretos) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <script>
+        // Configuração oficial do seu Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCy8u-i9ZzOnL_ZTO853zaONbKxRLdd0C4",
+            authDomain: "muindanayah-relogio-kongo.firebaseapp.com",
+            databaseURL: "https://muindanayah-relogio-kongo-default-rtdb.firebaseio.com",
+            projectId: "muindanayah-relogio-kongo",
+            storageBucket: "muindanayah-relogio-kongo.firebasestorage.app",
+            messagingSenderId: "232829611514",
+            appId: "1:232829611514:web:70fbf644f0910f16d58843",
+            measurementId: "G-9JXHQ1YD7S"
+        };
+
+        // Inicializa o Firebase com segurança
+        let db = null;
+        try {
+            if (typeof firebase !== 'undefined') {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                }
+                db = firebase.database();
+            }
+        } catch(e) {
+            console.log("Modo offline ativo:", e);
+        }
+
+        // Controlo de Segurança: Triplo clique rápido no título para abrir o painel privado
+        let contadorCliquesAdmin = 0;
+        let tempoUltimoClique = 0;
+
+        function tentarAbrirPainelAdmin() {
+            let agoraTempo = new Date().getTime();
+            if (agoraTempo - tempoUltimoClique > 1500) {
+                contadorCliquesAdmin = 1;
+            } else {
+                contadorCliquesAdmin++;
+            }
+            tempoUltimoClique = agoraTempo;
+
+            if (contadorCliquesAdmin === 3) {
+                const painel = document.getElementById("painelAdminModal");
+                if (painel) painel.style.display = "flex";
+                carregarEstatisticasPrivadas();
+                contadorCliquesAdmin = 0;
+            }
+        }
+
+        function fecharPainelAdmin() {
+            const painel = document.getElementById("painelAdminModal");
+            if (painel) painel.style.display = "none";
+        }
+
+        function carregarEstatisticasPrivadas() {
+            if (!db) return;
+            try {
+                db.ref('estatisticas/visitasTotais').on('value', (snapshot) => {
+                    const el = document.getElementById("contadorVisitas");
+                    if (el) el.innerText = snapshot.val() || 0;
+                });
+                db.ref('estatisticas/instalacoesPWA').on('value', (snapshot) => {
+                    const el = document.getElementById("contadorInstalacoes");
+                    if (el) el.innerText = snapshot.val() || 0;
+                });
+            } catch(e) {}
+        }
+
+        // Registo automático e silencioso de visitas ao carregar a página
+        window.addEventListener('load', function() {
+            try {
+                if (db) {
+                    let refVisitas = db.ref('estatisticas/visitasTotais');
+                    refVisitas.transaction(function(current) {
+                        return (current || 0) + 1;
+                    });
+
+                    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+                        let refInstalacoes = db.ref('estatisticas/instalacoesPWA');
+                        refInstalacoes.transaction(function(current) {
+                            return (current || 0) + 1;
+                        });
+                    }
+                }
+            } catch(e) {
+                console.log("Modo offline ativo");
+            }
+        });
+    </script>
     <style>
         :root {
             --bg-color: #080807;
@@ -39,9 +131,13 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
+            height: auto;
+            padding: 20px 12px;
+            box-sizing: border-box;
             margin: 0;
-            overflow: hidden;
+            overflow-y: auto;
+            overflow-x: hidden;
             text-align: center;
             transition: background 0.3s ease;
             -webkit-user-select: none;
@@ -78,9 +174,30 @@
         #dateDisplay {
             font-size: 15px;
             color: var(--date-color);
-            margin-bottom: 20px;
+            margin-bottom: 8px;
             letter-spacing: 1px;
             white-space: pre-line;
+        }
+
+        .sub-hora {
+            font-size: 19px;
+            color: #C5A059;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            margin-top: -8px;
+            margin-bottom: 14px;
+            text-transform: capitalize;
+            text-shadow: 0 0 12px rgba(197, 160, 89, 0.35);
+        }
+
+        .weekday-display, .dia-semana {
+            font-size: 16px;
+            color: var(--gold-secondary);
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            margin-bottom: 20px;
+            text-transform: lowercase;
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.35);
         }
 
         #gregorianDisplay {
@@ -116,12 +233,13 @@
         }
 
         .credits {
-            font-size: 10px;
+            font-size: 11px;
             color: var(--credit-color);
-            position: absolute;
-            bottom: 20px;
+            margin-top: 14px;
             letter-spacing: 0.5px;
             width: 100%;
+            line-height: 1.5;
+            text-align: center;
         }
 
         #notificationModal {
@@ -344,14 +462,16 @@
 </head>
 <body>
 
-    <h1>RELÓGIO KONGO</h1>
+    <h1 class="titulo-topo" onclick="tentarAbrirPainelAdmin()" style="cursor: pointer; user-select: none;" title="Toque 3 vezes rápido para abrir o Painel de Administrador">RELÓGIO KONGO</h1>
 
-    <div id="hourDisplay">--ª HORA<br>DA NOITE</div>
-    <div id="minDisplay">-- minutos • -- segundos</div>
+    <div id="hourDisplay" class="hora-destaque">--ª HORA<br>DA NOITE</div>
+    <div id="txtNomeNtu" class="sub-hora">Zinga</div>
+    <div id="minDisplay" class="tempo-detalhe">-- minutos • -- segundos</div>
     
-    <div class="line"></div>
+    <div class="line linha-divisorias"></div>
     
-    <div id="dateDisplay">NVULA ---- • LUA • JORNADA</div>
+    <div id="dateDisplay" class="info-astro">NVULA ---- • LUA • JORNADA</div>
+    <div id="weekdayDisplay" class="dia-semana">primeiro dia</div>
     
     <div class="line"></div>
     
@@ -360,6 +480,7 @@
     <div class="buttons-container">
         <button onclick="toggleTheme()">Mudar Tema</button>
         <button onclick="openStandby()">Modo StandBy ⚡</button>
+        <button onclick="openSacredGeometryModal()">Saber ✦</button>
         <button onclick="openWidgetModal()">Widgets 📱</button>
         <button onclick="closeApp()">Fechar App</button>
     </div>
@@ -368,7 +489,12 @@
         🔄 Sensor de Rotação: <span style="color: var(--gold-secondary); font-weight: bold;">StandBy em Paisagem Ativo</span>
     </div>
 
-    <div class="credits">Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
+    <div class="credits">
+        <div>Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
+        <div style="margin-top: 3px; font-size: 10px; color: var(--credit-color);">
+            Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini
+        </div>
+    </div>
 
     <!-- MODO STANDBY ANIMADO -->
     <div id="standbyOverlay" class="standby-container">
@@ -385,7 +511,9 @@
                 </div>
                 <div class="standby-digital-time" id="standbyTimeDigital">00:00:00</div>
                 <div id="standbyKongoHour" style="font-size: 22px; color: var(--gold-secondary); letter-spacing: 1.5px; margin-top: 10px; font-weight: 800; text-transform: uppercase; text-shadow: 0 0 16px rgba(212, 175, 55, 0.45);"></div>
+                <div id="standbyKongoNome" style="font-size: 16px; color: #C5A059; font-weight: 600; letter-spacing: 1px; margin-top: 4px;"></div>
                 <div id="standbyKongoDate" style="margin-top: 12px; padding: 8px 24px; background: rgba(212, 175, 55, 0.08); border-radius: 20px; border: 1px solid var(--line-color); font-size: 14px; color: var(--date-color); text-align: center; font-weight: 600; letter-spacing: 1px;"></div>
+                <div id="standbyKongoWeekday" style="font-size: 14px; color: var(--gold-secondary); font-weight: 700; letter-spacing: 1.5px; margin-top: 6px; text-transform: lowercase;"></div>
             </div>
 
             <div id="standbyAnalogView" style="display: none; align-items: center; justify-content: center; gap: 32px; flex-wrap: wrap; width: 100%; padding: 10px 0;">
@@ -393,12 +521,12 @@
                     <svg viewBox="0 0 200 200" width="180" height="180" style="filter: drop-shadow(0 0 12px rgba(212, 175, 55, 0.35));">
                         <circle cx="100" cy="100" r="94" fill="#060606" stroke="var(--gold-secondary)" stroke-width="2.5" />
                         <circle cx="100" cy="100" r="88" fill="none" stroke="var(--line-color)" stroke-width="1" stroke-dasharray="3 3" />
-                        <line x1="100" y1="16" x2="100" y2="184" stroke="rgba(212, 175, 55, 0.25)" stroke-width="1" />
-                        <line x1="16" y1="100" x2="184" y2="100" stroke="rgba(212, 175, 55, 0.25)" stroke-width="1" />
-                        <text x="100" y="34" fill="var(--gold-primary)" font-size="13" font-weight="bold" text-anchor="middle">12</text>
-                        <text x="176" y="104" fill="var(--gold-primary)" font-size="13" font-weight="bold" text-anchor="middle">3</text>
-                        <text x="100" y="174" fill="var(--gold-primary)" font-size="13" font-weight="bold" text-anchor="middle">6</text>
-                        <text x="24" y="104" fill="var(--gold-primary)" font-size="13" font-weight="bold" text-anchor="middle">9</text>
+                        <line x1="100" y1="16" x2="100" y2="184" stroke="rgba(212, 175, 55, 0.35)" stroke-width="1.2" />
+                        <line x1="16" y1="100" x2="184" y2="100" stroke="rgba(212, 175, 55, 0.35)" stroke-width="1.2" />
+                        <text x="100" y="32" fill="var(--gold-primary)" font-size="10" font-weight="bold" text-anchor="middle">12 • TUKULA</text>
+                        <text x="180" y="104" fill="var(--gold-primary)" font-size="9" font-weight="bold" text-anchor="end">LUVEMBA</text>
+                        <text x="100" y="174" fill="var(--gold-primary)" font-size="10" font-weight="bold" text-anchor="middle">6 • MUSONI</text>
+                        <text x="20" y="104" fill="var(--gold-primary)" font-size="9" font-weight="bold" text-anchor="start">KALA</text>
                         <line id="analogHandHour" x1="100" y1="100" x2="100" y2="50" stroke="var(--gold-primary)" stroke-width="4" stroke-linecap="round" />
                         <line id="analogHandMin" x1="100" y1="100" x2="100" y2="34" stroke="var(--gold-secondary)" stroke-width="2.5" stroke-linecap="round" />
                         <line id="analogHandSec" x1="100" y1="115" x2="100" y2="28" stroke="#FCEEBA" stroke-width="1.2" stroke-linecap="round" />
@@ -410,12 +538,18 @@
                     <div id="analogKongoHour" style="font-size: 22px; font-weight: bold; color: var(--gold-secondary); margin: 6px 0; line-height: 1.2;"></div>
                     <div id="analogKongoMinSec" style="font-size: 14px; color: var(--text-mins); margin-bottom: 8px;"></div>
                     <div id="analogKongoDate" style="font-size: 14px; color: var(--date-color); font-weight: 600; border-top: 1px solid var(--line-color); padding-top: 8px; line-height: 1.4;"></div>
+                    <div id="analogKongoWeekday" style="font-size: 12px; color: var(--gold-secondary); font-weight: 700; letter-spacing: 1.5px; margin-top: 4px;"></div>
                 </div>
             </div>
 
             <div class="standby-switch-bar">
                 <button id="btnStandbyDigital" class="standby-tab-btn active" onclick="setStandbyMode('digital')">Digital Imperial</button>
                 <button id="btnStandbyAnalog" class="standby-tab-btn" onclick="setStandbyMode('analog')">Mostrador Dikenga</button>
+            </div>
+
+            <div style="font-size: 10px; color: var(--credit-color); margin-top: 18px; text-align: center; border-top: 1px solid rgba(212, 175, 55, 0.15); padding-top: 8px; width: 100%; line-height: 1.4;">
+                <div>Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
+                <div style="margin-top: 2px; font-size: 9px; opacity: 0.85;">Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini</div>
             </div>
         </div>
     </div>
@@ -441,6 +575,7 @@
                 <div id="widgetTimeDigital" style="font-size: 28px; font-weight: bold; color: var(--gold-primary); line-height: 1;">18:24</div>
                 <div id="widgetKongoHour" style="font-size: 14px; font-weight: bold; color: var(--gold-secondary); margin: 6px 0 2px;">0ª HORA DA NOITE</div>
                 <div id="widgetKongoDate" style="font-size: 11px; color: var(--date-color);">NVULA 6008 • LUA • JORNADA</div>
+                <div id="widgetKongoWeekday" style="font-size: 11px; color: var(--gold-secondary); font-weight: bold; margin-top: 3px;">PRIMEIRO DIA</div>
             </div>
 
             <!-- Preview 2x2 -->
@@ -461,6 +596,161 @@
                 <p style="font-size: 11px; color: var(--text-mins); line-height: 1.4;">
                     Ao instalar a aplicação ou gerar o APK final, o widget de tempo cósmico fica permanentemente disponível no seletor de widgets do telemóvel.
                 </p>
+
+                <div style="font-size: 10px; color: var(--credit-color); text-align: center; margin-top: 14px; line-height: 1.45;">
+                    <div>Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
+                    <div style="margin-top: 2px; opacity: 0.9;">
+                        Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DA GEOMETRIA SAGRADA SABER (DIKENGA DIA KONGO) -->
+    <div id="sacredGeometryModal" class="widget-modal-overlay">
+        <div class="widget-modal-content" style="max-width: 440px;">
+            <button class="standby-close-btn" onclick="closeSacredGeometryModal()">✕</button>
+
+            <h2 style="font-size: 16px; color: var(--gold-secondary); font-weight: bold; margin-bottom: 4px; letter-spacing: 1px;">
+                GEOMETRIA SAGRADA • SABER
+            </h2>
+            <p style="font-size: 12px; color: var(--text-mins); margin-bottom: 14px;">
+                Cosmograma Dikenga Dia Kongo & Contagem Temporal N'TU (Ciclo de 0 a 12 Horas)
+            </p>
+
+            <div style="margin: 0 auto 14px; max-width: 240px;">
+                <svg viewBox="0 0 240 240" width="100%" height="auto" style="filter: drop-shadow(0 0 16px rgba(212, 175, 55, 0.4));">
+                    <circle cx="120" cy="120" r="110" fill="#050505" stroke="var(--gold-secondary)" stroke-width="2.5" />
+                    <circle cx="120" cy="120" r="102" fill="none" stroke="var(--line-color)" stroke-width="1" stroke-dasharray="4 3" />
+                    <circle cx="120" cy="120" r="72" fill="none" stroke="rgba(212, 175, 55, 0.2)" stroke-width="1" />
+
+                    <!-- Eixo Kalunga (Horizontal) -->
+                    <line x1="10" y1="120" x2="230" y2="120" stroke="var(--gold-secondary)" stroke-width="2" stroke-dasharray="6 3" />
+                    <!-- Eixo Mwamba (Vertical) -->
+                    <line x1="120" y1="10" x2="120" y2="230" stroke="rgba(212, 175, 55, 0.4)" stroke-width="1.5" />
+
+                    <!-- Marcadores dos 4 Quadrantes Sagrados do Saber -->
+                    <circle cx="120" cy="22" r="8" fill="#F0C63E" stroke="#050505" stroke-width="2" />
+                    <text x="120" y="42" fill="var(--gold-primary)" font-size="10" font-weight="bold" text-anchor="middle">TUKULA (12H / 6ª DIA)</text>
+
+                    <circle cx="218" cy="120" r="8" fill="#FFFAC4" stroke="#050505" stroke-width="2" />
+                    <text x="175" y="136" fill="var(--gold-primary)" font-size="9" font-weight="bold" text-anchor="middle">LUVEMBA (0H N)</text>
+
+                    <circle cx="120" cy="218" r="8" fill="#D4AF37" stroke="#050505" stroke-width="2" />
+                    <text x="120" y="206" fill="var(--gold-primary)" font-size="10" font-weight="bold" text-anchor="middle">MUSONI (6ª NOITE)</text>
+
+                    <circle cx="22" cy="120" r="8" fill="#DFBE91" stroke="#050505" stroke-width="2" />
+                    <text x="65" y="136" fill="var(--gold-primary)" font-size="9" font-weight="bold" text-anchor="middle">KALA (0H D)</text>
+
+                    <!-- Espiral Sagrada -->
+                    <path
+                        d="M 120 120 C 135 105, 150 90, 160 120 C 170 150, 140 180, 100 170 C 60 160, 50 110, 80 80 C 105 55, 165 55, 190 95"
+                        fill="none"
+                        stroke="var(--gold-secondary)"
+                        stroke-width="1.5"
+                        stroke-dasharray="3 2"
+                        opacity="0.8"
+                    />
+
+                    <!-- Centro Sagrado -->
+                    <circle cx="120" cy="120" r="5" fill="var(--gold-primary)" stroke="#050505" stroke-width="1.5" />
+                </svg>
+            </div>
+
+            <div style="text-align: left; font-size: 11px; color: var(--text-mins); line-height: 1.5; background: rgba(212, 175, 55, 0.05); padding: 12px; border-radius: 8px; border: 1px solid var(--line-color);">
+                <div style="color: var(--gold-secondary); font-weight: bold; marginBottom: 4px;">
+                    ✦ A Contagem Temporal N'TU (0 a 12 Horas):
+                </div>
+                <p style="margin-bottom: 8px;">
+                    O dia cósmico divide-se em dois ciclos de 0 a 12 horas: a <strong>Hora da Noite</strong> (iniciada às 18:00 no Luvemba) e a <strong>Hora do Dia</strong> (iniciada às 06:00 no Kala).
+                </p>
+                <div style="color: var(--gold-secondary); font-weight: bold; margin-bottom: 4px;">
+                    ✦ O Ciclo Sagrado dos Dias da Semana:
+                </div>
+                <p>
+                    Apresentado logo abaixo da Lua e da jornada cósmica, segue a tradição ancestral do <strong>Primeiro Dia</strong> (Domingo) ao <strong>Sétimo Dia</strong> (Sábado).
+                </p>
+            </div>
+
+            <div style="font-size: 10px; color: var(--credit-color); text-align: center; margin-top: 16px; line-height: 1.5;">
+                <div>Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
+                <div style="margin-top: 2px; opacity: 0.9;">
+                    Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE NOTIFICAÇÃO INICIAL -->
+    <div id="notificationModal">
+        <div class="modal-box">
+            <h3 style="color: var(--gold-secondary); margin-top: 0; font-size: 16px; letter-spacing: 1px;">RELÓGIO KONGO</h3>
+            <div id="modalHoraNtu" style="font-weight: bold; margin: 12px 0; color: var(--gold-primary); font-size: 15px;"></div>
+            <div id="modalDataNtu" style="color: var(--date-color); font-size: 13px;"></div>
+            <div id="modalWeekdayNtu" style="color: var(--gold-secondary); font-size: 12px; font-weight: bold; letter-spacing: 1.5px; margin-top: 6px;"></div>
+            <div style="font-size: 10px; color: var(--credit-color); margin: 14px 0 18px; line-height: 1.45; border-top: 1px solid var(--line-color); padding-top: 10px;">
+                <div>Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
+                <div style="margin-top: 2px; opacity: 0.9;">Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini</div>
+            </div>
+            <button onclick="closeNotification()" style="width: 100%; margin: 0; padding: 10px; border-radius: 6px;">Entendido</button>
+        </div>
+    </div>
+
+    <!-- PAINEL PRIVADO DE ADMINISTRADOR (ACESSO POR TRIPLO CLIQUE NO TÍTULO) -->
+    <div id="painelAdminModal" class="widget-modal-overlay">
+        <div id="painelAdmin" class="widget-modal-content" style="max-width: 460px; background-color: #121212; border: 2px solid #D4AF37; box-shadow: 0 0 25px rgba(212, 175, 55, 0.45); text-align: left;">
+            <button class="standby-close-btn" onclick="fecharPainelAdmin()" title="Fechar Painel Privado">✕</button>
+
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span style="font-size: 18px;">🔒</span>
+                <h3 style="margin: 0; color: var(--gold-secondary); font-size: 15px; letter-spacing: 1px;">
+                    PAINEL PRIVADO DE ADMINISTRADOR
+                </h3>
+            </div>
+            <p style="font-size: 11px; color: var(--text-mins); margin-bottom: 16px;">
+                Métricas exclusivas em tempo real sincronizadas via Firebase Realtime Database.
+            </p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px;">
+                <div style="background: rgba(212, 175, 55, 0.08); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
+                    <div style="font-size: 11px; color: var(--text-mins); text-transform: uppercase; letter-spacing: 1px;">
+                        Visitas Totais
+                    </div>
+                    <div id="contadorVisitas" style="font-size: 32px; font-weight: 800; color: var(--gold-primary); margin-top: 6px; font-variant-numeric: tabular-nums;">
+                        0
+                    </div>
+                </div>
+
+                <div style="background: rgba(212, 175, 55, 0.08); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
+                    <div style="font-size: 11px; color: var(--text-mins); text-transform: uppercase; letter-spacing: 1px;">
+                        Instalações PWA
+                    </div>
+                    <div id="contadorInstalacoes" style="font-size: 32px; font-weight: 800; color: var(--gold-secondary); margin-top: 6px; font-variant-numeric: tabular-nums;">
+                        0
+                    </div>
+                </div>
+            </div>
+
+            <div style="background: #080808; border: 1px solid var(--line-color); border-radius: 10px; padding: 12px; margin-bottom: 16px; font-size: 11px; color: var(--text-mins); line-height: 1.5;">
+                <div style="color: var(--gold-secondary); font-weight: bold; margin-bottom: 4px;">
+                    📡 Estado da Conexão Firebase:
+                </div>
+                <div>• Projeto: <strong>muindanayah-relogio-kongo</strong></div>
+                <div>• Realtime DB: <strong>muindanayah-relogio-kongo-default-rtdb.firebaseio.com</strong></div>
+                <div>• Modo de Registo: Silencioso e assíncrono com tolerância offline.</div>
+            </div>
+
+            <button onclick="fecharPainelAdmin()" style="background-color: var(--gold-secondary); color: #050505; width: 100%; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 13px; margin: 0;">
+                Fechar Painel de Administrador
+            </button>
+
+            <!-- Créditos Obrigatórios -->
+            <div style="font-size: 10px; color: var(--credit-color); text-align: center; margin-top: 14px; line-height: 1.45;">
+                <div>Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
+                <div style="margin-top: 2px; opacity: 0.9;">
+                    Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini
+                </div>
             </div>
         </div>
     </div>
@@ -487,6 +777,17 @@
             return n + "ª";
         }
 
+        const nomesNtu = {
+            0: "Zinga", 1: "Mosy", 2: "Zole", 3: "Tatu", 4: "Ya", 5: "Tanu",
+            6: "Sambanu", 7: "Sambuady", 8: "Nana", 9: "Vua", 
+            10: "Kumi", 11: "Kumi na Mwe", 12: "Kumi na Wole"
+        };
+
+        const diasNtuExtenso = [
+            "primeiro dia", "segundo dia", "terceiro dia", 
+            "quarto dia", "quinto dia", "sexto dia", "sétimo dia"
+        ];
+
         function calculateNtu(date = new Date()) {
             const anchor = new Date(CFG.anchorLocal);
             const elapsed = date.getTime() - anchor.getTime();
@@ -495,6 +796,10 @@
             const luaIndex = Math.floor(jornadaIndex / 30);
             const lua = LUAS[((luaIndex % 12) + 12) % 12];
             const nvula = CFG.nvula + Math.floor(jornadaIndex / 360);
+
+            // Ciclo dos dias da semana tradicional
+            const diaSemanaLower = diasNtuExtenso[date.getDay()] || "primeiro dia";
+            const diaSemanaUpper = diaSemanaLower.toUpperCase();
 
             const h = date.getHours();
             let hourNumber, period;
@@ -509,23 +814,29 @@
                 period = "DO DIA";
             }
 
+            const nomeNtu = nomesNtu[hourNumber] || "Zinga";
+
             return {
                 hourNumber,
                 period,
+                nomeNtu,
                 horaNtu: getOrdinal(hourNumber) + " HORA " + period,
                 jornada,
                 jornadaOrdinal: getOrdinal(jornada),
                 lua: lua.toUpperCase(),
                 nvula,
+                diaSemana: diaSemanaLower,
+                diaSemanaLower,
+                diaSemanaUpper,
                 dataNtu: "NVULA " + nvula + " • " + lua.toUpperCase() + " • " + getOrdinal(jornada) + " JORNADA"
             };
         }
 
-        // Notificação do app apresenta hora e data NTU
+        // Notificação do app apresenta hora e data NTU e ciclo dos dias
         window.addEventListener('load', () => {
             setTimeout(() => {
                 const ntu = calculateNtu();
-                const msg = "Relógio Kongo • Sabedoria Ancestral\n\nHora NTU: " + ntu.horaNtu + "\nData NTU: " + ntu.dataNtu + "\n\nBaseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi";
+                const msg = "Relógio Kongo • Sabedoria Ancestral\n\nHora NTU: " + ntu.horaNtu + "\nData NTU: " + ntu.dataNtu + "\nDia da Semana: " + ntu.diaSemanaUpper + "\n\nBaseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi\nDesenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini";
                 
                 try {
                     alert(msg);
@@ -538,7 +849,7 @@
                     if (Notification.permission === 'granted') {
                         try {
                             new Notification("Relógio Kongo • Tempo NTU", {
-                                body: ntu.horaNtu + "\n" + ntu.dataNtu,
+                                body: ntu.horaNtu + "\n" + ntu.dataNtu + " • " + ntu.diaSemanaUpper,
                                 icon: 'icon.png'
                             });
                         } catch (e) {}
@@ -547,7 +858,7 @@
                             if (permission === 'granted') {
                                 try {
                                     new Notification("Relógio Kongo • Tempo NTU", {
-                                        body: ntu.horaNtu + "\n" + ntu.dataNtu,
+                                        body: ntu.horaNtu + "\n" + ntu.dataNtu + " • " + ntu.diaSemanaUpper,
                                         icon: 'icon.png'
                                     });
                                 } catch (e) {}
@@ -561,11 +872,21 @@
         function showNotificationModal(ntu) {
             document.getElementById('modalHoraNtu').innerText = "Hora NTU: " + ntu.horaNtu;
             document.getElementById('modalDataNtu').innerText = "Data NTU: " + ntu.dataNtu;
+            const wEl = document.getElementById('modalWeekdayNtu');
+            if (wEl) wEl.innerText = "Ciclo: " + ntu.diaSemanaUpper;
             document.getElementById('notificationModal').style.display = 'flex';
         }
 
         function closeNotification() {
             document.getElementById('notificationModal').style.display = 'none';
+        }
+
+        function openSacredGeometryModal() {
+            document.getElementById('sacredGeometryModal').style.display = 'flex';
+        }
+
+        function closeSacredGeometryModal() {
+            document.getElementById('sacredGeometryModal').style.display = 'none';
         }
 
         function closeApp() {
@@ -684,6 +1005,18 @@
                 }
             }
 
+            const nomeEl = document.getElementById("txtNomeNtu");
+            if (nomeEl) {
+                if (nomeEl.innerText !== ntu.nomeNtu) {
+                    nomeEl.innerText = ntu.nomeNtu;
+                }
+                if (lastHour !== -1 && currentHour !== lastHour) {
+                    nomeEl.classList.remove("fade-update");
+                    void nomeEl.offsetWidth;
+                    nomeEl.classList.add("fade-update");
+                }
+            }
+
             const minEl = document.getElementById("minDisplay");
             if (minEl) {
                 minEl.innerText = String(now.getMinutes()).padStart(2, '0') + " minutos • " + String(now.getSeconds()).padStart(2, '0') + " segundos";
@@ -707,6 +1040,18 @@
                 }
             }
 
+            const weekdayEl = document.getElementById("weekdayDisplay") || document.getElementById("txtDiaSemana");
+            if (weekdayEl) {
+                if (weekdayEl.innerText !== ntu.diaSemanaLower) {
+                    weekdayEl.innerText = ntu.diaSemanaLower;
+                }
+                if (lastHour !== -1 && currentHour !== lastHour) {
+                    weekdayEl.classList.remove("fade-update");
+                    void weekdayEl.offsetWidth;
+                    weekdayEl.classList.add("fade-update");
+                }
+            }
+
             lastHour = currentHour;
             lastMinute = currentMinute;
 
@@ -716,6 +1061,7 @@
             const hh = String(now.getHours()).padStart(2, '0');
             const mm = String(now.getMinutes()).padStart(2, '0');
             const ss = String(now.getSeconds()).padStart(2, '0');
+            const hhMm = hh + ":" + mm;
             
             // Atualização do Modo StandBy com Hora e Data NTU Exclusivas
             const digitalEl = document.getElementById('standbyTimeDigital');
@@ -727,8 +1073,12 @@
             }
             const sKongoHour = document.getElementById('standbyKongoHour');
             if (sKongoHour) sKongoHour.innerText = ntu.horaNtu;
+            const sKongoNome = document.getElementById('standbyKongoNome');
+            if (sKongoNome) sKongoNome.innerText = ntu.nomeNtu;
             const sKongoDate = document.getElementById('standbyKongoDate');
             if (sKongoDate) sKongoDate.innerText = ntu.dataNtu;
+            const sKongoWeekday = document.getElementById('standbyKongoWeekday');
+            if (sKongoWeekday) sKongoWeekday.innerText = ntu.diaSemanaLower;
 
             // Ponteiros analógicos com Painel NTU Exclusivo
             const sSec = now.getSeconds() * 6;
@@ -746,6 +1096,8 @@
             if (aKongoMinSec) aKongoMinSec.innerText = mm + " minutos • " + ss + " segundos";
             const aKongoDate = document.getElementById('analogKongoDate');
             if (aKongoDate) aKongoDate.innerText = ntu.dataNtu;
+            const aKongoWeekday = document.getElementById('analogKongoWeekday');
+            if (aKongoWeekday) aKongoWeekday.innerText = ntu.diaSemanaLower;
 
             // Widget Previews
             const wTime = document.getElementById('widgetTimeDigital');
@@ -754,6 +1106,8 @@
             if (wHour) wHour.innerText = ntu.horaNtu;
             const wDate = document.getElementById('widgetKongoDate');
             if (wDate) wDate.innerText = ntu.dataNtu;
+            const wWeekday = document.getElementById('widgetKongoWeekday');
+            if (wWeekday) wWeekday.innerText = ntu.diaSemanaLower;
             const wTime2 = document.getElementById('widgetTimeDigital2x2');
             if (wTime2) wTime2.innerText = hhMm;
             const wHour2 = document.getElementById('widgetKongoHour2x2');

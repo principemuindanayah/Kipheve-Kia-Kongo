@@ -1,7 +1,8 @@
 // Service Worker - Relógio Kongo (100% Funcional Offline)
 // Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi
+// Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini
 
-const CACHE_NAME = 'relogio-kongo-v2';
+const CACHE_NAME = 'relogio-kongo-v3';
 const CORE_ASSETS = [
   './',
   './index.html',

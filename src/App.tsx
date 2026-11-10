@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { trackVisitAndInstallation, subscribeToPrivateStats } from './firebase';
 
 const CFG = {
   anchorLocal: "2026-04-02T18:00:00",
@@ -14,6 +15,22 @@ function getOrdinal(n: number) {
   return n + "ª";
 }
 
+const NOMES_NTU: Record<number, string> = {
+  0: "Zinga", 1: "Mosy", 2: "Zole", 3: "Tatu", 4: "Ya", 5: "Tanu",
+  6: "Sambanu", 7: "Sambuady", 8: "Nana", 9: "Vua", 
+  10: "Kumi", 11: "Kumi na Mwe", 12: "Kumi na Wole"
+};
+
+const DIAS_SEMANA_TRADICIONAL = [
+  "primeiro dia",   // 0 = Domingo
+  "segundo dia",    // 1 = Segunda-feira
+  "terceiro dia",   // 2 = Terça-feira
+  "quarto dia",     // 3 = Quarta-feira
+  "quinto dia",     // 4 = Quinta-feira
+  "sexto dia",      // 5 = Sexta-feira
+  "sétimo dia"      // 6 = Sábado
+];
+
 function calculateNtu(date = new Date()) {
   const anchor = new Date(CFG.anchorLocal);
   const elapsed = date.getTime() - anchor.getTime();
@@ -22,6 +39,11 @@ function calculateNtu(date = new Date()) {
   const luaIndex = Math.floor(jornadaIndex / 30);
   const lua = LUAS[((luaIndex % 12) + 12) % 12];
   const nvula = CFG.nvula + Math.floor(jornadaIndex / 360);
+
+  // Ciclo dos dias da semana (Domingo = Primeiro Dia ... Sábado = Sétimo Dia)
+  const diaSemana = DIAS_SEMANA_TRADICIONAL[date.getDay()];
+  const diaSemanaUpper = diaSemana.toUpperCase();
+  const diaSemanaLower = diaSemana.toLowerCase();
 
   const h = date.getHours();
   let hourNumber: number;
@@ -37,14 +59,20 @@ function calculateNtu(date = new Date()) {
     period = "DO DIA";
   }
 
+  const nomeNtu = NOMES_NTU[hourNumber] || "Zinga";
+
   return {
     hourNumber,
     period,
+    nomeNtu,
     horaNtu: `${getOrdinal(hourNumber)} HORA ${period}`,
     jornada,
     jornadaOrdinal: getOrdinal(jornada),
     lua: lua.toUpperCase(),
     nvula,
+    diaSemana,
+    diaSemanaUpper,
+    diaSemanaLower,
     dataNtu: `NVULA ${nvula} • ${lua.toUpperCase()} • ${getOrdinal(jornada)} JORNADA`
   };
 }
@@ -140,6 +168,44 @@ export default function App() {
   const [selectedWidgetType, setSelectedWidgetType] = useState<'4x2' | '2x2'>('4x2');
   const [widgetInstalledToast, setWidgetInstalledToast] = useState(false);
 
+  // Modal do Saber (Geometria Sagrada)
+  const [showSacredGeometryModal, setShowSacredGeometryModal] = useState(false);
+
+  // Painel Privado de Administrador (Triplo clique rápido no título)
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [adminStats, setAdminStats] = useState({ visitas: 0, instalacoes: 0 });
+  const adminClickRef = useRef({ count: 0, lastTime: 0 });
+
+  const handleTitleClick = () => {
+    const now = Date.now();
+    if (now - adminClickRef.current.lastTime > 1500) {
+      adminClickRef.current.count = 1;
+    } else {
+      adminClickRef.current.count += 1;
+    }
+    adminClickRef.current.lastTime = now;
+
+    if (adminClickRef.current.count === 3) {
+      setShowAdminPanel(true);
+      adminClickRef.current.count = 0;
+    }
+  };
+
+  // Registo automático e silencioso de visitas e instalações no Firebase
+  useEffect(() => {
+    trackVisitAndInstallation();
+  }, []);
+
+  // Escuta estatísticas privadas quando o painel de administrador está aberto
+  useEffect(() => {
+    if (showAdminPanel) {
+      const unsubscribe = subscribeToPrivateStats((stats) => {
+        setAdminStats(stats);
+      });
+      return () => unsubscribe();
+    }
+  }, [showAdminPanel]);
+
   useEffect(() => {
     applyColorIntensity(FIXED_INTENSITY, isDarkMode);
   }, [isDarkMode]);
@@ -218,9 +284,9 @@ export default function App() {
     const currentNtu = calculateNtu();
     setNtuData(currentNtu);
 
-    // Apresenta hora e data NTU na notificação inicial
+    // Apresenta hora, data NTU e ciclo dos dias da semana na notificação inicial
     const timer = setTimeout(() => {
-      const msg = `Relógio Kongo • Sabedoria Ancestral\n\nHora NTU: ${currentNtu.horaNtu}\nData NTU: ${currentNtu.dataNtu}\n\nBaseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi`;
+      const msg = `Relógio Kongo • Sabedoria Ancestral\n\nHora NTU: ${currentNtu.horaNtu}\nData NTU: ${currentNtu.dataNtu}\nCiclo Semanal: ${currentNtu.diaSemanaUpper}\n\nBaseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi\nDesenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini`;
 
       try {
         alert(msg);
@@ -233,7 +299,7 @@ export default function App() {
         if (Notification.permission === 'granted') {
           try {
             new Notification("Relógio Kongo • Tempo NTU", {
-              body: `${currentNtu.horaNtu}\n${currentNtu.dataNtu}`,
+              body: `${currentNtu.horaNtu}\n${currentNtu.dataNtu}\n${currentNtu.diaSemanaUpper}`,
               icon: './icon.png'
             });
           } catch {}
@@ -242,7 +308,7 @@ export default function App() {
             if (permission === 'granted') {
               try {
                 new Notification("Relógio Kongo • Tempo NTU", {
-                  body: `${currentNtu.horaNtu}\n${currentNtu.dataNtu}`,
+                  body: `${currentNtu.horaNtu}\n${currentNtu.dataNtu}\n${currentNtu.diaSemanaUpper}`,
                   icon: './icon.png'
                 });
               } catch {}
@@ -275,6 +341,18 @@ export default function App() {
         }
       }
 
+      const nomeEl = document.getElementById("txtNomeNtu");
+      if (nomeEl) {
+        if (nomeEl.innerText !== ntu.nomeNtu) {
+          nomeEl.innerText = ntu.nomeNtu;
+        }
+        if (lastHour !== -1 && currentHour !== lastHour) {
+          nomeEl.classList.remove("fade-update");
+          void nomeEl.offsetWidth;
+          nomeEl.classList.add("fade-update");
+        }
+      }
+
       const minEl = document.getElementById("minDisplay");
       if (minEl) {
         minEl.innerText = String(now.getMinutes()).padStart(2, '0') + " minutos • " + String(now.getSeconds()).padStart(2, '0') + " segundos";
@@ -295,6 +373,16 @@ export default function App() {
             void dateEl.offsetWidth;
             dateEl.classList.add("fade-update");
           }
+        }
+      }
+
+      const weekDayEl = document.getElementById("weekdayDisplay");
+      if (weekDayEl && weekDayEl.innerText !== ntu.diaSemanaLower) {
+        weekDayEl.innerText = ntu.diaSemanaLower;
+        if (lastHour !== -1) {
+          weekDayEl.classList.remove("fade-update");
+          void weekDayEl.offsetWidth;
+          weekDayEl.classList.add("fade-update");
         }
       }
 
@@ -378,14 +466,23 @@ export default function App() {
           alignItems: 'center'
         }}
       >
-        <h1>RELÓGIO KONGO</h1>
+        <h1
+          className="titulo-topo"
+          onClick={handleTitleClick}
+          style={{ cursor: 'pointer', userSelect: 'none' }}
+          title="Toque 3 vezes rápido para abrir o Painel de Administrador"
+        >
+          RELÓGIO KONGO
+        </h1>
 
-        <div id="hourDisplay">--ª HORA<br />DA NOITE</div>
-        <div id="minDisplay">-- minutos • -- segundos</div>
+        <div id="hourDisplay" className="hora-destaque">--ª HORA<br />DA NOITE</div>
+        <div id="txtNomeNtu" className="sub-hora">{ntuData.nomeNtu}</div>
+        <div id="minDisplay" className="tempo-detalhe">-- minutos • -- segundos</div>
 
-        <div className="line"></div>
+        <div className="line linha-divisorias"></div>
 
-        <div id="dateDisplay">NVULA ---- • LUA • JORNADA</div>
+        <div id="dateDisplay" className="info-astro">NVULA ---- • LUA • JORNADA</div>
+        <div id="weekdayDisplay" className="dia-semana">{ntuData.diaSemanaLower}</div>
 
         <div className="line"></div>
 
@@ -394,6 +491,7 @@ export default function App() {
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <button onClick={toggleTheme}>Mudar Tema</button>
           <button onClick={() => setIsStandbyActive(true)}>Modo StandBy ⚡</button>
+          <button onClick={() => setShowSacredGeometryModal(true)}>Saber ✦</button>
           <button onClick={() => setShowWidgetModal(true)}>Widgets 📱</button>
           <button onClick={closeApp}>Fechar App</button>
         </div>
@@ -418,7 +516,12 @@ export default function App() {
           </span>
         </div>
 
-        <div className="credits">Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
+        <div className="credits">
+          <div>Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
+          <div style={{ marginTop: '3px', fontSize: '10px', color: 'var(--credit-color)' }}>
+            Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini
+          </div>
+        </div>
       </div>
 
       {/* ====================================================================
@@ -486,6 +589,9 @@ export default function App() {
                 >
                   {ntuData.horaNtu}
                 </div>
+                <div style={{ fontSize: '16px', color: '#C5A059', fontWeight: 600, letterSpacing: '1px', marginTop: '4px' }}>
+                  {ntuData.nomeNtu}
+                </div>
 
                 <div
                   style={{
@@ -501,7 +607,10 @@ export default function App() {
                     letterSpacing: '1px'
                   }}
                 >
-                  {ntuData.dataNtu}
+                  <div>{ntuData.dataNtu}</div>
+                  <div style={{ fontSize: '14px', color: 'var(--gold-secondary)', fontWeight: 700, letterSpacing: '1.5px', marginTop: '6px' }}>
+                    {ntuData.diaSemanaLower}
+                  </div>
                 </div>
               </div>
             )}
@@ -519,19 +628,20 @@ export default function App() {
                   padding: '10px 0'
                 }}
               >
-                {/* Mostrador Redondo com Ponteiros Animados */}
+                {/* Mostrador Redondo com Ponteiros Animados e Geometria Sagrada */}
                 <div style={{ position: 'relative', width: '180px', height: '180px' }}>
                   <svg viewBox="0 0 200 200" width="180" height="180" style={{ filter: 'drop-shadow(0 0 12px rgba(212, 175, 55, 0.35))' }}>
                     <circle cx="100" cy="100" r="94" fill="#060606" stroke="var(--gold-secondary)" strokeWidth="2.5" />
                     <circle cx="100" cy="100" r="88" fill="none" stroke="var(--line-color)" strokeWidth="1" strokeDasharray="3 3" />
 
-                    <line x1="100" y1="16" x2="100" y2="184" stroke="rgba(212, 175, 55, 0.25)" strokeWidth="1" />
-                    <line x1="16" y1="100" x2="184" y2="100" stroke="rgba(212, 175, 55, 0.25)" strokeWidth="1" />
+                    {/* Geometria Sagrada Saber: Kalunga e Mwamba */}
+                    <line x1="100" y1="16" x2="100" y2="184" stroke="rgba(212, 175, 55, 0.35)" strokeWidth="1.2" />
+                    <line x1="16" y1="100" x2="184" y2="100" stroke="rgba(212, 175, 55, 0.35)" strokeWidth="1.2" />
 
-                    <text x="100" y="34" fill="var(--gold-primary)" fontSize="13" fontWeight="bold" textAnchor="middle">12</text>
-                    <text x="176" y="104" fill="var(--gold-primary)" fontSize="13" fontWeight="bold" textAnchor="middle">3</text>
-                    <text x="100" y="174" fill="var(--gold-primary)" fontSize="13" fontWeight="bold" textAnchor="middle">6</text>
-                    <text x="24" y="104" fill="var(--gold-primary)" fontSize="13" fontWeight="bold" textAnchor="middle">9</text>
+                    <text x="100" y="32" fill="var(--gold-primary)" fontSize="10" fontWeight="bold" textAnchor="middle">12 • TUKULA</text>
+                    <text x="180" y="104" fill="var(--gold-primary)" fontSize="9" fontWeight="bold" textAnchor="end">LUVEMBA</text>
+                    <text x="100" y="174" fill="var(--gold-primary)" fontSize="10" fontWeight="bold" textAnchor="middle">6 • MUSONI</text>
+                    <text x="20" y="104" fill="var(--gold-primary)" fontSize="9" fontWeight="bold" textAnchor="start">KALA</text>
 
                     <line
                       x1="100"
@@ -582,7 +692,10 @@ export default function App() {
                     {String(min).padStart(2, '0')} minutos • {String(sec).padStart(2, '0')} segundos
                   </div>
                   <div style={{ fontSize: '14px', color: 'var(--date-color)', fontWeight: 600, borderTop: '1px solid var(--line-color)', paddingTop: '8px', lineHeight: 1.4 }}>
-                    {ntuData.dataNtu}
+                    <div>{ntuData.dataNtu}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--gold-secondary)', fontWeight: 700, letterSpacing: '1.5px', marginTop: '4px' }}>
+                      {ntuData.diaSemanaUpper}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -602,6 +715,14 @@ export default function App() {
               >
                 Mostrador Dikenga
               </button>
+            </div>
+
+            {/* Créditos Obrigatórios no Modo StandBy */}
+            <div style={{ fontSize: '9px', color: 'var(--credit-color)', textAlign: 'center', marginTop: '14px', lineHeight: 1.45 }}>
+              <div>Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
+              <div style={{ marginTop: '2px', opacity: 0.9 }}>
+                Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini
+              </div>
             </div>
           </div>
         </div>
@@ -666,6 +787,9 @@ export default function App() {
                 <div style={{ fontSize: '11px', color: 'var(--date-color)' }}>
                   {ntuData.dataNtu}
                 </div>
+                <div style={{ fontSize: '11px', color: 'var(--gold-secondary)', fontWeight: 'bold', marginTop: '3px' }}>
+                  {ntuData.diaSemanaUpper}
+                </div>
               </div>
             )}
 
@@ -683,6 +807,9 @@ export default function App() {
                 </div>
                 <div style={{ fontSize: '9px', color: 'var(--date-color)', marginTop: '4px' }}>
                   {ntuData.lua} • {ntuData.jornadaOrdinal}
+                </div>
+                <div style={{ fontSize: '9px', color: 'var(--gold-secondary)', fontWeight: 'bold', marginTop: '2px' }}>
+                  {ntuData.diaSemanaUpper}
                 </div>
               </div>
             )}
@@ -724,6 +851,106 @@ export default function App() {
               <p style={{ fontSize: '11px', color: 'var(--text-mins)', lineHeight: 1.4 }}>
                 Ao instalar como aplicação ou gerar o APK final, o widget nativo de tempo cósmico fica permanentemente disponível no seletor de widgets do telemóvel.
               </p>
+
+              {/* Créditos Obrigatórios no Modal de Widgets */}
+              <div style={{ fontSize: '10px', color: 'var(--credit-color)', textAlign: 'center', marginTop: '14px', lineHeight: 1.45 }}>
+                <div>Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
+                <div style={{ marginTop: '2px', opacity: 0.9 }}>
+                  Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ====================================================================
+          MODAL DA GEOMETRIA SAGRADA SABER (DIKENGA DIA KONGO)
+          ==================================================================== */}
+      {showSacredGeometryModal && (
+        <div className="widget-modal-overlay">
+          <div className="widget-modal-content" style={{ maxWidth: '440px' }}>
+            <button
+              className="standby-close-btn"
+              onClick={() => setShowSacredGeometryModal(false)}
+            >
+              ✕
+            </button>
+
+            <h2 style={{ fontSize: '16px', color: 'var(--gold-secondary)', fontWeight: 'bold', marginBottom: '4px', letterSpacing: '1px' }}>
+              GEOMETRIA SAGRADA • SABER
+            </h2>
+            <p style={{ fontSize: '12px', color: 'var(--text-mins)', marginBottom: '14px' }}>
+              Cosmograma Dikenga Dia Kongo & Contagem Temporal N'TU (Ciclo de 0 a 12 Horas)
+            </p>
+
+            {/* Representação Gráfica Sacra do Cosmograma Saber */}
+            <div style={{ margin: '0 auto 14px', maxWidth: '240px' }}>
+              <svg viewBox="0 0 240 240" width="100%" height="auto" style={{ filter: 'drop-shadow(0 0 16px rgba(212, 175, 55, 0.4))' }}>
+                {/* Círculo Cósmico Sagrado (Ndingi / Kalunga) */}
+                <circle cx="120" cy="120" r="110" fill="#050505" stroke="var(--gold-secondary)" strokeWidth="2.5" />
+                <circle cx="120" cy="120" r="102" fill="none" stroke="var(--line-color)" strokeWidth="1" strokeDasharray="4 3" />
+                <circle cx="120" cy="120" r="72" fill="none" stroke="rgba(212, 175, 55, 0.2)" strokeWidth="1" />
+
+                {/* Eixo Kalunga (Horizontal) - Limiar entre Ku Nseke (físico) e Ku Mpemba (ancestral) */}
+                <line x1="10" y1="120" x2="230" y2="120" stroke="var(--gold-secondary)" strokeWidth="2" strokeDasharray="6 3" />
+                {/* Eixo Mwamba (Vertical) - Caminho do Poder Espiritual */}
+                <line x1="120" y1="10" x2="120" y2="230" stroke="rgba(212, 175, 55, 0.4)" strokeWidth="1.5" />
+
+                {/* Marcadores dos 4 Quadrantes Sagrados do Saber */}
+                {/* 1. TUKULA (Zénite / 12h do ciclo N'TU / Meio-dia) */}
+                <circle cx="120" cy="22" r="8" fill="#F0C63E" stroke="#050505" strokeWidth="2" />
+                <text x="120" y="42" fill="var(--gold-primary)" fontSize="10" fontWeight="bold" textAnchor="middle">TUKULA (12H / 6ª DIA)</text>
+
+                {/* 2. LUVEMBA (Ocaso / 18h / 0ª Hora da Noite) */}
+                <circle cx="218" cy="120" r="8" fill="#FFFAC4" stroke="#050505" strokeWidth="2" />
+                <text x="175" y="136" fill="var(--gold-primary)" fontSize="9" fontWeight="bold" textAnchor="middle">LUVEMBA (0H N)</text>
+
+                {/* 3. MUSONI (Nadir / 00h / 6ª Hora da Noite) */}
+                <circle cx="120" cy="218" r="8" fill="#D4AF37" stroke="#050505" strokeWidth="2" />
+                <text x="120" y="206" fill="var(--gold-primary)" fontSize="10" fontWeight="bold" textAnchor="middle">MUSONI (6ª NOITE)</text>
+
+                {/* 4. KALA (Alvorada / 06h / 0ª Hora do Dia) */}
+                <circle cx="22" cy="120" r="8" fill="#DFBE91" stroke="#050505" strokeWidth="2" />
+                <text x="65" y="136" fill="var(--gold-primary)" fontSize="9" fontWeight="bold" textAnchor="middle">KALA (0H D)</text>
+
+                {/* Espiral Sagrada de Concepção e Renascimento */}
+                <path
+                  d="M 120 120 C 135 105, 150 90, 160 120 C 170 150, 140 180, 100 170 C 60 160, 50 110, 80 80 C 105 55, 165 55, 190 95"
+                  fill="none"
+                  stroke="var(--gold-secondary)"
+                  strokeWidth="1.5"
+                  strokeDasharray="3 2"
+                  opacity="0.8"
+                />
+
+                {/* Centro Sagrado (V-Cross / Ponto N'TU) */}
+                <circle cx="120" cy="120" r="5" fill="var(--gold-primary)" stroke="#050505" strokeWidth="1.5" />
+              </svg>
+            </div>
+
+            {/* Explicação da Geometria Sagrada e Temporalidade */}
+            <div style={{ textAlign: 'left', fontSize: '11px', color: 'var(--text-mins)', lineHeight: 1.5, background: 'rgba(212, 175, 55, 0.05)', padding: '12px', borderRadius: '8px', border: '1px solid var(--line-color)' }}>
+              <div style={{ color: 'var(--gold-secondary)', fontWeight: 'bold', marginBottom: '4px' }}>
+                ✦ A Contagem Temporal N'TU (0 a 12 Horas):
+              </div>
+              <p style={{ marginBottom: '8px' }}>
+                O dia cósmico divide-se em dois ciclos de 0 a 12 horas: a <strong>Hora da Noite</strong> (iniciada às 18:00 no Luvemba) e a <strong>Hora do Dia</strong> (iniciada às 06:00 no Kala).
+              </p>
+              <div style={{ color: 'var(--gold-secondary)', fontWeight: 'bold', marginBottom: '4px' }}>
+                ✦ O Ciclo Sagrado dos Dias da Semana:
+              </div>
+              <p>
+                Apresentado logo abaixo da Lua e da jornada cósmica, segue a tradição ancestral do <strong>Primeiro Dia</strong> (Domingo) ao <strong>Sétimo Dia</strong> (Sábado).
+              </p>
+            </div>
+
+            {/* Créditos Obrigatórios */}
+            <div style={{ fontSize: '10px', color: 'var(--credit-color)', textAlign: 'center', marginTop: '16px', lineHeight: 1.5 }}>
+              <div>Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
+              <div style={{ marginTop: '2px', opacity: 0.9 }}>
+                Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini
+              </div>
             </div>
           </div>
         </div>
@@ -760,15 +987,145 @@ export default function App() {
             <div style={{ fontSize: '15px', color: 'var(--gold-primary)', fontWeight: 'bold', margin: '8px 0' }}>
               Hora NTU: {ntuData.horaNtu}
             </div>
-            <div style={{ fontSize: '14px', color: 'var(--date-color)', marginBottom: '16px' }}>
+            <div style={{ fontSize: '14px', color: 'var(--date-color)', marginBottom: '4px' }}>
               Data NTU: {ntuData.dataNtu}
             </div>
-            <p style={{ fontSize: '11px', color: 'var(--credit-color)', marginBottom: '20px' }}>
-              Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi
-            </p>
+            <div style={{ fontSize: '13px', color: 'var(--gold-secondary)', fontWeight: 'bold', marginBottom: '16px' }}>
+              Ciclo Semanal: {ntuData.diaSemanaUpper}
+            </div>
+            <div style={{ fontSize: '10px', color: 'var(--credit-color)', marginBottom: '20px', lineHeight: 1.5 }}>
+              <div>Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
+              <div style={{ marginTop: '3px' }}>
+                Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini
+              </div>
+            </div>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
               <button onClick={() => setShowNotificationModal(false)}>Fechar Notificação</button>
               <button onClick={closeApp}>Fechar App</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ====================================================================
+          PAINEL PRIVADO DE ADMINISTRADOR (ACESSO POR TRIPLO CLIQUE NO TÍTULO)
+          ==================================================================== */}
+      {showAdminPanel && (
+        <div id="painelAdminModal" className="widget-modal-overlay" style={{ display: 'flex' }}>
+          <div
+            id="painelAdmin"
+            className="widget-modal-content"
+            style={{
+              maxWidth: '460px',
+              backgroundColor: '#121212',
+              border: '2px solid #D4AF37',
+              boxShadow: '0 0 25px rgba(212, 175, 55, 0.45)',
+              textAlign: 'left'
+            }}
+          >
+            <button
+              className="standby-close-btn"
+              onClick={() => setShowAdminPanel(false)}
+              title="Fechar Painel Privado"
+            >
+              ✕
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <span style={{ fontSize: '18px' }}>🔒</span>
+              <h3 style={{ margin: 0, color: 'var(--gold-secondary)', fontSize: '15px', letterSpacing: '1px' }}>
+                PAINEL PRIVADO DE ADMINISTRADOR
+              </h3>
+            </div>
+            <p style={{ fontSize: '11px', color: 'var(--text-mins)', marginBottom: '16px' }}>
+              Métricas exclusivas em tempo real sincronizadas via Firebase Realtime Database.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
+              <div
+                style={{
+                  background: 'rgba(212, 175, 55, 0.08)',
+                  border: '1px solid rgba(212, 175, 55, 0.3)',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ fontSize: '11px', color: 'var(--text-mins)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  Visitas Totais
+                </div>
+                <div
+                  id="contadorVisitas"
+                  style={{
+                    fontSize: '32px',
+                    fontWeight: 800,
+                    color: 'var(--gold-primary)',
+                    marginTop: '6px',
+                    fontVariantNumeric: 'tabular-nums'
+                  }}
+                >
+                  {adminStats.visitas}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: 'rgba(212, 175, 55, 0.08)',
+                  border: '1px solid rgba(212, 175, 55, 0.3)',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ fontSize: '11px', color: 'var(--text-mins)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  Instalações PWA
+                </div>
+                <div
+                  id="contadorInstalacoes"
+                  style={{
+                    fontSize: '32px',
+                    fontWeight: 800,
+                    color: 'var(--gold-secondary)',
+                    marginTop: '6px',
+                    fontVariantNumeric: 'tabular-nums'
+                  }}
+                >
+                  {adminStats.instalacoes}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background: '#080808', border: '1px solid var(--line-color)', borderRadius: '10px', padding: '12px', marginBottom: '16px', fontSize: '11px', color: 'var(--text-mins)', lineHeight: 1.5 }}>
+              <div style={{ color: 'var(--gold-secondary)', fontWeight: 'bold', marginBottom: '4px' }}>
+                📡 Estado da Conexão Firebase:
+              </div>
+              <div>• Projeto: <strong>muindanayah-relogio-kongo</strong></div>
+              <div>• Realtime DB: <strong>muindanayah-relogio-kongo-default-rtdb.firebaseio.com</strong></div>
+              <div>• Modo de Registo: Silencioso e assíncrono com tolerância offline.</div>
+            </div>
+
+            <button
+              onClick={() => setShowAdminPanel(false)}
+              style={{
+                backgroundColor: 'var(--gold-secondary)',
+                color: '#050505',
+                width: '100%',
+                padding: '12px',
+                borderRadius: '8px',
+                fontWeight: 'bold',
+                fontSize: '13px',
+                margin: 0
+              }}
+            >
+              Fechar Painel de Administrador
+            </button>
+
+            {/* Créditos Obrigatórios */}
+            <div style={{ fontSize: '10px', color: 'var(--credit-color)', textAlign: 'center', marginTop: '14px', lineHeight: 1.45 }}>
+              <div>Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
+              <div style={{ marginTop: '2px', opacity: 0.9 }}>
+                Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini
+              </div>
             </div>
           </div>
         </div>

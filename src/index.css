@@ -28,9 +28,12 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100vh;
+    min-height: 100vh;
     margin: 0;
-    overflow: hidden;
+    padding: 16px 8px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    overflow-x: hidden;
     text-align: center;
     transition: background 0.3s ease;
     -webkit-user-select: none;
@@ -47,7 +50,7 @@ h1 {
 #hourDisplay {
     font-size: 34px;
     font-weight: bold;
-    margin: 20px 0;
+    margin: 16px 0;
     line-height: 1.25;
     white-space: pre-line;
 }
@@ -55,27 +58,57 @@ h1 {
 #minDisplay {
     font-size: 16px;
     color: var(--text-mins);
-    margin-bottom: 20px;
+    margin-bottom: 16px;
 }
 
 .line {
     width: 75%;
     border-bottom: 1px dashed var(--line-color);
-    margin: 15px auto;
+    margin: 12px auto;
 }
 
 #dateDisplay {
     font-size: 15px;
     color: var(--date-color);
-    margin-bottom: 20px;
+    margin-bottom: 6px;
     letter-spacing: 1px;
     white-space: pre-line;
+}
+
+.sub-hora {
+    font-size: 19px;
+    color: #C5A059;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    margin-top: -8px;
+    margin-bottom: 14px;
+    text-transform: capitalize;
+    text-shadow: 0 0 12px rgba(197, 160, 89, 0.35);
+}
+
+.weekday-display {
+    font-size: 15px;
+    color: var(--gold-secondary);
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: lowercase;
+    margin-bottom: 16px;
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.35);
+}
+
+.dia-semana {
+    font-size: 15px;
+    color: var(--gold-secondary);
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: lowercase;
+    margin-bottom: 16px;
 }
 
 #gregorianDisplay {
     font-size: 13px;
     color: var(--text-mins);
-    margin-bottom: 25px;
+    margin-bottom: 20px;
     white-space: pre-line;
 }
 
@@ -83,27 +116,31 @@ button {
     background-color: var(--gold-secondary);
     color: #050505;
     border: none;
-    padding: 12px 24px;
-    font-size: 14px;
+    padding: 10px 20px;
+    font-size: 13px;
     font-weight: bold;
     cursor: pointer;
     border-radius: 6px;
-    margin: 6px;
+    margin: 4px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    transition: opacity 0.2s;
+    transition: opacity 0.2s, transform 0.15s ease;
 }
 
 button:active {
     opacity: 0.8;
+    transform: scale(0.98);
 }
 
 .credits {
     font-size: 10px;
     color: var(--credit-color);
-    position: absolute;
-    bottom: 20px;
     letter-spacing: 0.5px;
-    width: 100%;
+    width: 92%;
+    max-width: 440px;
+    margin-top: 14px;
+    margin-bottom: 8px;
+    line-height: 1.5;
+    text-align: center;
 }
 
 @keyframes fadeSoft {
