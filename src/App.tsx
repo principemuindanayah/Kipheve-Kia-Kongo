@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { trackVisitAndInstallation, subscribeToPrivateStats } from './firebase';
+import { GoldenDustCanvas } from './GoldenDustCanvas';
 
 const CFG = {
   anchorLocal: "2026-04-02T18:00:00",
@@ -18,7 +19,7 @@ function getOrdinal(n: number) {
 const NOMES_NTU: Record<number, string> = {
   0: "Zinga", 1: "Mosy", 2: "Zole", 3: "Tatu", 4: "Ya", 5: "Tanu",
   6: "Sambanu", 7: "Sambuady", 8: "Nana", 9: "Vua", 
-  10: "Kumi", 11: "Kumi na Mwe", 12: "Kumi na Wole"
+  10: "Kumi", 11: "Kumi Mosy", 12: "Kumi Zole"
 };
 
 const DIAS_SEMANA_TRADICIONAL = [
@@ -31,6 +32,26 @@ const DIAS_SEMANA_TRADICIONAL = [
   "sétimo dia"      // 6 = Sábado
 ];
 
+// Tabela oficial de Luas do Calendário Kongo baseada nos períodos informados
+export function obterLuaKongo(data: Date): string {
+  const mes = data.getMonth() + 1; // 1 a 12
+  const dia = data.getDate();
+
+  // Mapeamento exato das 12 Luas do Calendário Kongo
+  if ((mes === 4 && dia >= 7) || (mes === 5 && dia <= 6)) return "1ª LUA • YAHANDI";
+  if ((mes === 5 && dia >= 7) || (mes === 6 && dia <= 5)) return "2ª LUA • LUBENI";
+  if ((mes === 6 && dia >= 6) || (mes === 7 && dia <= 5)) return "3ª LUA • NGUDI";
+  if ((mes === 7 && dia >= 6) || (mes === 8 && dia <= 4)) return "4ª LUA • EZALA";
+  if ((mes === 8 && dia >= 5) || (mes === 9 && dia <= 3)) return "5ª LUA • NUANINI";
+  if ((mes === 9 && dia >= 4) || (mes === 10 && dia <= 3)) return "6ª LUA • MASESI";
+  if ((mes === 10 && dia >= 4) || (mes === 11 && dia <= 2)) return "7ª LUA • NSIMBANU";
+  if ((mes === 11 && dia >= 3) || (mes === 12 && dia <= 2)) return "8ª LUA • LEMBA";
+  if ((mes === 12 && dia >= 3) || (mes === 1 && dia <= 1)) return "9ª LUA • ISEKELE";
+  if (mes === 1) return "10ª LUA • ZIBULANI";
+  if ((mes === 2) || (mes === 3 && dia <= 2)) return "11ª LUA • YASAH";
+  return "12ª LUA • BENGAMI"; // Março a 6 de Abril
+}
+
 function calculateNtu(date = new Date()) {
   const anchor = new Date(CFG.anchorLocal);
   const elapsed = date.getTime() - anchor.getTime();
@@ -39,6 +60,7 @@ function calculateNtu(date = new Date()) {
   const luaIndex = Math.floor(jornadaIndex / 30);
   const lua = LUAS[((luaIndex % 12) + 12) % 12];
   const nvula = CFG.nvula + Math.floor(jornadaIndex / 360);
+  const luaKongo = obterLuaKongo(date);
 
   // Ciclo dos dias da semana (Domingo = Primeiro Dia ... Sábado = Sétimo Dia)
   const diaSemana = DIAS_SEMANA_TRADICIONAL[date.getDay()];
@@ -69,6 +91,7 @@ function calculateNtu(date = new Date()) {
     jornada,
     jornadaOrdinal: getOrdinal(jornada),
     lua: lua.toUpperCase(),
+    luaKongo,
     nvula,
     diaSemana,
     diaSemanaUpper,
@@ -173,7 +196,10 @@ export default function App() {
 
   // Painel Privado de Administrador (Triplo clique rápido no título)
   const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const [adminStats, setAdminStats] = useState({ visitas: 0, instalacoes: 0 });
+  const [adminStats, setAdminStats] = useState<{ visitas: string | number; instalacoes: string | number }>({
+    visitas: "A carregar...",
+    instalacoes: "A carregar..."
+  });
   const adminClickRef = useRef({ count: 0, lastTime: 0 });
 
   const handleTitleClick = () => {
@@ -328,9 +354,9 @@ export default function App() {
       const currentMinute = now.getMinutes();
       const ntu = calculateNtu(now);
 
-      const hourEl = document.getElementById("hourDisplay");
+      const hourEl = document.getElementById("txtHoraNtu") || document.getElementById("hourDisplay");
       if (hourEl) {
-        const newHourText = getOrdinal(ntu.hourNumber) + " HORA\n" + ntu.period;
+        const newHourText = getOrdinal(ntu.hourNumber) + " HORA " + ntu.period;
         if (hourEl.innerText !== newHourText) {
           hourEl.innerText = newHourText;
         }
@@ -353,7 +379,7 @@ export default function App() {
         }
       }
 
-      const minEl = document.getElementById("minDisplay");
+      const minEl = document.getElementById("txtContadorMinSec") || document.getElementById("minDisplay");
       if (minEl) {
         minEl.innerText = String(now.getMinutes()).padStart(2, '0') + " minutos • " + String(now.getSeconds()).padStart(2, '0') + " segundos";
         if (lastMinute !== -1 && currentMinute !== lastMinute) {
@@ -361,6 +387,11 @@ export default function App() {
           void minEl.offsetWidth; // trigger reflow
           minEl.classList.add("fade-update");
         }
+      }
+
+      const luaEl = document.getElementById("txtLuaKongo");
+      if (luaEl && luaEl.innerText !== ntu.luaKongo) {
+        luaEl.innerText = ntu.luaKongo;
       }
 
       const dateEl = document.getElementById("dateDisplay");
@@ -376,7 +407,7 @@ export default function App() {
         }
       }
 
-      const weekDayEl = document.getElementById("weekdayDisplay");
+      const weekDayEl = document.getElementById("txtDiaSemana") || document.getElementById("weekdayDisplay");
       if (weekDayEl && weekDayEl.innerText !== ntu.diaSemanaLower) {
         weekDayEl.innerText = ntu.diaSemanaLower;
         if (lastHour !== -1) {
@@ -396,7 +427,7 @@ export default function App() {
       const mm = String(now.getMinutes()).padStart(2, '0');
       const ss = String(now.getSeconds()).padStart(2, '0');
 
-      const gregEl = document.getElementById("gregorianDisplay");
+      const gregEl = document.getElementById("txtRelogioGregoriano") || document.getElementById("gregorianDisplay");
       if (gregEl) {
         gregEl.innerText = hh + ":" + mm + ":" + ss + "\n" + d + "/" + m + "/" + y;
       }
@@ -456,6 +487,9 @@ export default function App() {
 
   return (
     <>
+      {/* Canvas animado de partículas de ouro imperial flutuantes que reagem ao giroscópio */}
+      <GoldenDustCanvas />
+
       <div
         className="gyro-interactive"
         style={{
@@ -467,26 +501,38 @@ export default function App() {
         }}
       >
         <h1
+          id="tituloKongo"
           className="titulo-topo"
-          onClick={handleTitleClick}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleTitleClick();
+          }}
           style={{ cursor: 'pointer', userSelect: 'none' }}
-          title="Toque 3 vezes rápido para abrir o Painel de Administrador"
+          title="Toque 3 vezes rápido para abrir o Painel Privado"
         >
           RELÓGIO KONGO
         </h1>
 
-        <div id="hourDisplay" className="hora-destaque">--ª HORA<br />DA NOITE</div>
-        <div id="txtNomeNtu" className="sub-hora">{ntuData.nomeNtu}</div>
-        <div id="minDisplay" className="tempo-detalhe">-- minutos • -- segundos</div>
+        {/* Relógio N'TU */}
+        <div className="hora-destaque" id="txtHoraNtu">{ntuData.horaNtu}</div>
+        <div className="sub-hora" id="txtNomeNtu">{ntuData.nomeNtu}</div>
+        <div className="tempo-detalhe" id="txtContadorMinSec">
+          {String(nowDate.getMinutes()).padStart(2, '0')} minutos • {String(nowDate.getSeconds()).padStart(2, '0')} segundos
+        </div>
 
-        <div className="line linha-divisorias"></div>
+        <hr className="linha-divisorias" />
 
-        <div id="dateDisplay" className="info-astro">NVULA ---- • LUA • JORNADA</div>
-        <div id="weekdayDisplay" className="dia-semana">{ntuData.diaSemanaLower}</div>
+        {/* Secção Astronómica com Número e Nome da Lua */}
+        <div className="info-astro">NVULA {ntuData.nvula}</div>
+        <div className="jornada-texto" id="txtLuaKongo">{ntuData.luaKongo}</div>
+        <div className="dia-semana" id="txtDiaSemana">{ntuData.diaSemanaLower}</div>
 
-        <div className="line"></div>
+        <hr className="linha-divisorias" />
 
-        <div id="gregorianDisplay">--:--:--<br />--/--/----</div>
+        <div style={{ fontSize: '12px', color: '#888', whiteSpace: 'pre-line', marginBottom: '20px' }} id="txtRelogioGregoriano">
+          {String(nowDate.getHours()).padStart(2, '0')}:{String(nowDate.getMinutes()).padStart(2, '0')}:{String(nowDate.getSeconds()).padStart(2, '0')}<br />
+          {String(nowDate.getDate()).padStart(2, '0')}/{String(nowDate.getMonth() + 1).padStart(2, '0')}/{nowDate.getFullYear()}
+        </div>
 
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <button onClick={toggleTheme}>Mudar Tema</button>
@@ -516,11 +562,9 @@ export default function App() {
           </span>
         </div>
 
-        <div className="credits">
-          <div>Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
-          <div style={{ marginTop: '3px', fontSize: '10px', color: 'var(--credit-color)' }}>
-            Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini
-          </div>
+        <div className="rodape-credito">
+          Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi<br />
+          Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi e do Gemini
         </div>
       </div>
 
@@ -1031,68 +1075,56 @@ export default function App() {
               ✕
             </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px', borderBottom: '1px solid rgba(212, 175, 55, 0.3)', paddingBottom: '10px' }}>
               <span style={{ fontSize: '18px' }}>🔒</span>
-              <h3 style={{ margin: 0, color: 'var(--gold-secondary)', fontSize: '15px', letterSpacing: '1px' }}>
-                PAINEL PRIVADO DE ADMINISTRADOR
+              <h3 style={{ margin: 0, color: 'var(--gold-secondary)', fontSize: '16px', letterSpacing: '1.5px', textAlign: 'center' }}>
+                PAINEL DE CONTROLO PRIVADO
               </h3>
             </div>
-            <p style={{ fontSize: '11px', color: 'var(--text-mins)', marginBottom: '16px' }}>
+            <p style={{ fontSize: '11px', color: 'var(--text-mins)', marginBottom: '16px', textAlign: 'center' }}>
               Métricas exclusivas em tempo real sincronizadas via Firebase Realtime Database.
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
-              <div
-                style={{
-                  background: 'rgba(212, 175, 55, 0.08)',
-                  border: '1px solid rgba(212, 175, 55, 0.3)',
-                  borderRadius: '12px',
-                  padding: '14px',
-                  textAlign: 'center'
-                }}
-              >
-                <div style={{ fontSize: '11px', color: 'var(--text-mins)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Visitas Totais
-                </div>
-                <div
-                  id="contadorVisitas"
-                  style={{
-                    fontSize: '32px',
-                    fontWeight: 800,
-                    color: 'var(--gold-primary)',
-                    marginTop: '6px',
-                    fontVariantNumeric: 'tabular-nums'
-                  }}
-                >
-                  {adminStats.visitas}
-                </div>
-              </div>
+            <div
+              className="dado-estatistica"
+              style={{
+                margin: '14px 0',
+                fontSize: '15px',
+                color: 'var(--gold-primary)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'rgba(212, 175, 55, 0.08)',
+                padding: '12px 16px',
+                borderRadius: '10px',
+                border: '1px solid rgba(212, 175, 55, 0.25)'
+              }}
+            >
+              <span>📊 Total de Acessos:</span>
+              <strong id="contadorVisitas" style={{ fontSize: '20px', color: 'var(--gold-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                {adminStats.visitas}
+              </strong>
+            </div>
 
-              <div
-                style={{
-                  background: 'rgba(212, 175, 55, 0.08)',
-                  border: '1px solid rgba(212, 175, 55, 0.3)',
-                  borderRadius: '12px',
-                  padding: '14px',
-                  textAlign: 'center'
-                }}
-              >
-                <div style={{ fontSize: '11px', color: 'var(--text-mins)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Instalações PWA
-                </div>
-                <div
-                  id="contadorInstalacoes"
-                  style={{
-                    fontSize: '32px',
-                    fontWeight: 800,
-                    color: 'var(--gold-secondary)',
-                    marginTop: '6px',
-                    fontVariantNumeric: 'tabular-nums'
-                  }}
-                >
-                  {adminStats.instalacoes}
-                </div>
-              </div>
+            <div
+              className="dado-estatistica"
+              style={{
+                margin: '14px 0',
+                fontSize: '15px',
+                color: 'var(--gold-primary)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'rgba(212, 175, 55, 0.08)',
+                padding: '12px 16px',
+                borderRadius: '10px',
+                border: '1px solid rgba(212, 175, 55, 0.25)'
+              }}
+            >
+              <span>📱 Instalações WebApp (PWA):</span>
+              <strong id="contadorInstalacoes" style={{ fontSize: '20px', color: 'var(--gold-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                {adminStats.instalacoes}
+              </strong>
             </div>
 
             <div style={{ background: '#080808', border: '1px solid var(--line-color)', borderRadius: '10px', padding: '12px', marginBottom: '16px', fontSize: '11px', color: 'var(--text-mins)', lineHeight: 1.5 }}>
@@ -1104,21 +1136,25 @@ export default function App() {
               <div>• Modo de Registo: Silencioso e assíncrono com tolerância offline.</div>
             </div>
 
-            <button
-              onClick={() => setShowAdminPanel(false)}
-              style={{
-                backgroundColor: 'var(--gold-secondary)',
-                color: '#050505',
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                fontWeight: 'bold',
-                fontSize: '13px',
-                margin: 0
-              }}
-            >
-              Fechar Painel de Administrador
-            </button>
+            <div style={{ textAlign: 'center', marginTop: '15px' }}>
+              <button
+                className="botao-fechar"
+                onClick={() => setShowAdminPanel(false)}
+                style={{
+                  backgroundColor: 'var(--gold-secondary)',
+                  color: '#050505',
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  fontWeight: 'bold',
+                  fontSize: '14px',
+                  margin: 0,
+                  cursor: 'pointer'
+                }}
+              >
+                Fechar Painel
+              </button>
+            </div>
 
             {/* Créditos Obrigatórios */}
             <div style={{ fontSize: '10px', color: 'var(--credit-color)', textAlign: 'center', marginTop: '14px', lineHeight: 1.45 }}>

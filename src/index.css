@@ -96,20 +96,65 @@ h1 {
     text-shadow: 0 0 10px rgba(212, 175, 55, 0.35);
 }
 
-.dia-semana {
-    font-size: 15px;
-    color: var(--gold-secondary);
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    text-transform: lowercase;
-    margin-bottom: 16px;
+.hora-destaque {
+    font-size: 32px;
+    font-weight: bold;
+    line-height: 1.2;
+    margin-bottom: 5px;
 }
 
-#gregorianDisplay {
+.tempo-detalhe {
+    font-size: 14px;
+    color: var(--text-mins);
+    margin-bottom: 22px;
+}
+
+.linha-divisorias {
+    border: 0;
+    border-top: 1px dashed var(--line-color);
+    width: 70%;
+    margin: 18px auto;
+}
+
+.info-astro {
     font-size: 13px;
+    letter-spacing: 1px;
+    color: var(--date-color);
+    margin-bottom: 6px;
+}
+
+.jornada-texto {
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 1.2px;
+    margin-bottom: 10px;
+    color: var(--gold-primary);
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+}
+
+.dia-semana {
+    font-size: 16px;
+    color: #E06C75;
+    font-weight: bold;
+    letter-spacing: 1.5px;
+    text-transform: lowercase;
+    margin-bottom: 20px;
+    text-shadow: 0 0 10px rgba(224, 108, 117, 0.35);
+}
+
+#txtRelogioGregoriano, #gregorianDisplay {
+    font-size: 12px;
     color: var(--text-mins);
     margin-bottom: 20px;
     white-space: pre-line;
+}
+
+.rodape-credito {
+    margin-top: 26px;
+    font-size: 10px;
+    color: var(--credit-color);
+    line-height: 1.45;
+    text-align: center;
 }
 
 button {

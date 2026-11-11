@@ -45,7 +45,8 @@
         let contadorCliquesAdmin = 0;
         let tempoUltimoClique = 0;
 
-        function tentarAbrirPainelAdmin() {
+        function tentarAbrirPainelAdmin(e) {
+            if (e && e.stopPropagation) e.stopPropagation();
             let agoraTempo = new Date().getTime();
             if (agoraTempo - tempoUltimoClique > 1500) {
                 contadorCliquesAdmin = 1;
@@ -55,31 +56,52 @@
             tempoUltimoClique = agoraTempo;
 
             if (contadorCliquesAdmin === 3) {
-                const painel = document.getElementById("painelAdminModal");
-                if (painel) painel.style.display = "flex";
+                const modal = document.getElementById("painelAdminModal");
+                if (modal) modal.style.display = "flex";
+                const painel = document.getElementById("painelAdmin");
+                if (painel) painel.style.display = "block";
                 carregarEstatisticasPrivadas();
                 contadorCliquesAdmin = 0;
             }
         }
 
-        function fecharPainelAdmin() {
-            const painel = document.getElementById("painelAdminModal");
+        window.fecharPainelAdmin = function() {
+            const modal = document.getElementById("painelAdminModal");
+            if (modal) modal.style.display = "none";
+            const painel = document.getElementById("painelAdmin");
             if (painel) painel.style.display = "none";
-        }
+        };
 
         function carregarEstatisticasPrivadas() {
-            if (!db) return;
+            const elVisitas = document.getElementById("contadorVisitas");
+            const elInstalacoes = document.getElementById("contadorInstalacoes");
+            if (!db) {
+                if (elVisitas && elVisitas.innerText === "A carregar...") elVisitas.innerText = "0";
+                if (elInstalacoes && elInstalacoes.innerText === "A carregar...") elInstalacoes.innerText = "0";
+                return;
+            }
             try {
                 db.ref('estatisticas/visitasTotais').on('value', (snapshot) => {
-                    const el = document.getElementById("contadorVisitas");
-                    if (el) el.innerText = snapshot.val() || 0;
+                    if (elVisitas) elVisitas.innerText = snapshot.val() || 0;
                 });
                 db.ref('estatisticas/instalacoesPWA').on('value', (snapshot) => {
-                    const el = document.getElementById("contadorInstalacoes");
-                    if (el) el.innerText = snapshot.val() || 0;
+                    if (elInstalacoes) elInstalacoes.innerText = snapshot.val() || 0;
                 });
-            } catch(e) {}
+            } catch(e) {
+                console.log("Modo offline ativo");
+            }
         }
+
+        // Listener dedicado para triplo clique em #tituloKongo
+        window.addEventListener('DOMContentLoaded', () => {
+            const elTitulo = document.getElementById("tituloKongo");
+            if (elTitulo) {
+                elTitulo.addEventListener("click", function(e) {
+                    e.stopPropagation();
+                    tentarAbrirPainelAdmin(e);
+                });
+            }
+        });
 
         // Registo automático e silencioso de visitas ao carregar a página
         window.addEventListener('load', function() {
@@ -151,60 +173,68 @@
             letter-spacing: 2px;
         }
 
-        #hourDisplay {
-            font-size: 34px;
+        #hourDisplay, .hora-destaque {
+            font-size: 32px;
             font-weight: bold;
-            margin: 20px 0;
-            line-height: 1.25;
-            white-space: pre-line;
-        }
-
-        #minDisplay {
-            font-size: 16px;
-            color: var(--text-mins);
-            margin-bottom: 20px;
-        }
-
-        .line {
-            width: 75%;
-            border-bottom: 1px dashed var(--line-color);
-            margin: 15px auto;
-        }
-
-        #dateDisplay {
-            font-size: 15px;
-            color: var(--date-color);
-            margin-bottom: 8px;
-            letter-spacing: 1px;
-            white-space: pre-line;
+            line-height: 1.2;
+            margin-bottom: 5px;
         }
 
         .sub-hora {
-            font-size: 19px;
+            font-size: 18px;
             color: #C5A059;
-            font-weight: 600;
-            letter-spacing: 1.5px;
-            margin-top: -8px;
-            margin-bottom: 14px;
-            text-transform: capitalize;
-            text-shadow: 0 0 12px rgba(197, 160, 89, 0.35);
-        }
-
-        .weekday-display, .dia-semana {
-            font-size: 16px;
-            color: var(--gold-secondary);
-            font-weight: 700;
-            letter-spacing: 1.5px;
             margin-bottom: 20px;
-            text-transform: lowercase;
-            text-shadow: 0 0 10px rgba(212, 175, 55, 0.35);
         }
 
-        #gregorianDisplay {
+        .tempo-detalhe {
+            font-size: 14px;
+            color: #AAAAAA;
+            margin-bottom: 28px;
+        }
+
+        .linha-divisorias {
+            border: 0;
+            border-top: 1px dashed #444444;
+            width: 70%;
+            margin: 20px auto;
+        }
+
+        .info-astro {
             font-size: 13px;
-            color: var(--text-mins);
+            letter-spacing: 1px;
+            color: #CCCCCC;
+            margin-bottom: 6px;
+        }
+
+        .jornada-texto {
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            color: var(--gold-primary);
+        }
+
+        .dia-semana {
+            font-size: 16px;
+            color: #E06C75;
+            font-weight: bold;
+            text-transform: lowercase;
+            margin-bottom: 20px;
+        }
+
+        #txtRelogioGregoriano, #gregorianDisplay {
+            font-size: 12px;
+            color: #888888;
             margin-bottom: 25px;
             white-space: pre-line;
+        }
+
+        .rodape-credito {
+            margin-top: 36px;
+            font-size: 10px;
+            color: #777777;
+            line-height: 1.4;
+            text-align: center;
         }
 
         .buttons-container {
@@ -462,20 +492,27 @@
 </head>
 <body>
 
-    <h1 class="titulo-topo" onclick="tentarAbrirPainelAdmin()" style="cursor: pointer; user-select: none;" title="Toque 3 vezes rápido para abrir o Painel de Administrador">RELÓGIO KONGO</h1>
+    <!-- Canvas de Partículas de Poeira de Ouro Imperial Flutuantes Reativo ao Giroscópio -->
+    <canvas id="canvasPoeiraOuro" style="position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 0; opacity: 0.92;"></canvas>
 
-    <div id="hourDisplay" class="hora-destaque">--ª HORA<br>DA NOITE</div>
-    <div id="txtNomeNtu" class="sub-hora">Zinga</div>
-    <div id="minDisplay" class="tempo-detalhe">-- minutos • -- segundos</div>
-    
-    <div class="line linha-divisorias"></div>
-    
-    <div id="dateDisplay" class="info-astro">NVULA ---- • LUA • JORNADA</div>
-    <div id="weekdayDisplay" class="dia-semana">primeiro dia</div>
-    
-    <div class="line"></div>
-    
-    <div id="gregorianDisplay">--:--:--<br>--/--/----</div>
+    <!-- Título protegido por triplo toque -->
+    <div class="titulo-topo" id="tituloKongo" onclick="tentarAbrirPainelAdmin(event)" style="cursor: pointer; user-select: none;" title="Toque 3 vezes rápido para abrir o Painel Privado">RELÓGIO KONGO</div>
+
+    <!-- Relógio N'TU -->
+    <div class="hora-destaque" id="txtHoraNtu">0ª HORA DO DIA</div>
+    <div class="sub-hora" id="txtNomeNtu">Zinga</div>
+    <div class="tempo-detalhe" id="txtContadorMinSec">00 minutos • 00 segundos</div>
+
+    <hr class="linha-divisorias">
+
+    <!-- Secção Astronómica com Número e Nome da Lua -->
+    <div class="info-astro">NVULA 6008</div>
+    <div class="jornada-texto" id="txtLuaKongo">8ª LUA • LEMBA</div>
+    <div class="dia-semana" id="txtDiaSemana">primeiro dia</div>
+
+    <hr class="linha-divisorias">
+
+    <div style="font-size: 12px; color: #888;" id="txtRelogioGregoriano">--:--:--<br>--/--/----</div>
 
     <div class="buttons-container">
         <button onclick="toggleTheme()">Mudar Tema</button>
@@ -489,11 +526,9 @@
         🔄 Sensor de Rotação: <span style="color: var(--gold-secondary); font-weight: bold;">StandBy em Paisagem Ativo</span>
     </div>
 
-    <div class="credits">
-        <div>Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi</div>
-        <div style="margin-top: 3px; font-size: 10px; color: var(--credit-color);">
-            Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini
-        </div>
+    <div class="rodape-credito">
+        Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi<br>
+        Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi e do Gemini
     </div>
 
     <!-- MODO STANDBY ANIMADO -->
@@ -699,37 +734,27 @@
 
     <!-- PAINEL PRIVADO DE ADMINISTRADOR (ACESSO POR TRIPLO CLIQUE NO TÍTULO) -->
     <div id="painelAdminModal" class="widget-modal-overlay">
-        <div id="painelAdmin" class="widget-modal-content" style="max-width: 460px; background-color: #121212; border: 2px solid #D4AF37; box-shadow: 0 0 25px rgba(212, 175, 55, 0.45); text-align: left;">
+        <div id="painelAdmin" class="widget-modal-content" style="max-width: 440px; background-color: #0c0b08; border: 2px solid #D4AF37; box-shadow: 0 0 30px rgba(212, 175, 55, 0.45); text-align: left; padding: 24px;">
             <button class="standby-close-btn" onclick="fecharPainelAdmin()" title="Fechar Painel Privado">✕</button>
 
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; border-bottom: 1px solid rgba(212, 175, 55, 0.3); padding-bottom: 10px;">
                 <span style="font-size: 18px;">🔒</span>
-                <h3 style="margin: 0; color: var(--gold-secondary); font-size: 15px; letter-spacing: 1px;">
-                    PAINEL PRIVADO DE ADMINISTRADOR
+                <h3 style="margin: 0; color: #D4AF37; font-size: 16px; letter-spacing: 1.5px; text-align: center;">
+                    PAINEL DE CONTROLO PRIVADO
                 </h3>
             </div>
-            <p style="font-size: 11px; color: var(--text-mins); margin-bottom: 16px;">
+            <p style="font-size: 11px; color: var(--text-mins); margin-bottom: 16px; text-align: center;">
                 Métricas exclusivas em tempo real sincronizadas via Firebase Realtime Database.
             </p>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px;">
-                <div style="background: rgba(212, 175, 55, 0.08); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
-                    <div style="font-size: 11px; color: var(--text-mins); text-transform: uppercase; letter-spacing: 1px;">
-                        Visitas Totais
-                    </div>
-                    <div id="contadorVisitas" style="font-size: 32px; font-weight: 800; color: var(--gold-primary); margin-top: 6px; font-variant-numeric: tabular-nums;">
-                        0
-                    </div>
-                </div>
+            <div class="dado-estatistica" style="margin: 14px 0; font-size: 15px; color: #FFFAC4; display: flex; justify-content: space-between; align-items: center; background: rgba(212, 175, 55, 0.08); padding: 12px 16px; border-radius: 10px; border: 1px solid rgba(212, 175, 55, 0.25);">
+                <span>📊 Total de Acessos:</span>
+                <strong id="contadorVisitas" style="font-size: 20px; color: #F0C63E; font-variant-numeric: tabular-nums;">A carregar...</strong>
+            </div>
 
-                <div style="background: rgba(212, 175, 55, 0.08); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 12px; padding: 14px; text-align: center;">
-                    <div style="font-size: 11px; color: var(--text-mins); text-transform: uppercase; letter-spacing: 1px;">
-                        Instalações PWA
-                    </div>
-                    <div id="contadorInstalacoes" style="font-size: 32px; font-weight: 800; color: var(--gold-secondary); margin-top: 6px; font-variant-numeric: tabular-nums;">
-                        0
-                    </div>
-                </div>
+            <div class="dado-estatistica" style="margin: 14px 0; font-size: 15px; color: #FFFAC4; display: flex; justify-content: space-between; align-items: center; background: rgba(212, 175, 55, 0.08); padding: 12px 16px; border-radius: 10px; border: 1px solid rgba(212, 175, 55, 0.25);">
+                <span>📱 Instalações WebApp (PWA):</span>
+                <strong id="contadorInstalacoes" style="font-size: 20px; color: #F0C63E; font-variant-numeric: tabular-nums;">A carregar...</strong>
             </div>
 
             <div style="background: #080808; border: 1px solid var(--line-color); border-radius: 10px; padding: 12px; margin-bottom: 16px; font-size: 11px; color: var(--text-mins); line-height: 1.5;">
@@ -741,9 +766,11 @@
                 <div>• Modo de Registo: Silencioso e assíncrono com tolerância offline.</div>
             </div>
 
-            <button onclick="fecharPainelAdmin()" style="background-color: var(--gold-secondary); color: #050505; width: 100%; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 13px; margin: 0;">
-                Fechar Painel de Administrador
-            </button>
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="botao-fechar" onclick="fecharPainelAdmin()" style="background-color: #D4AF37; color: #050505; border: none; padding: 12px 24px; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; font-size: 14px;">
+                    Fechar Painel
+                </button>
+            </div>
 
             <!-- Créditos Obrigatórios -->
             <div style="font-size: 10px; color: var(--credit-color); text-align: center; margin-top: 14px; line-height: 1.45;">
@@ -780,13 +807,33 @@
         const nomesNtu = {
             0: "Zinga", 1: "Mosy", 2: "Zole", 3: "Tatu", 4: "Ya", 5: "Tanu",
             6: "Sambanu", 7: "Sambuady", 8: "Nana", 9: "Vua", 
-            10: "Kumi", 11: "Kumi na Mwe", 12: "Kumi na Wole"
+            10: "Kumi", 11: "Kumi Mosy", 12: "Kumi Zole"
         };
 
         const diasNtuExtenso = [
             "primeiro dia", "segundo dia", "terceiro dia", 
             "quarto dia", "quinto dia", "sexto dia", "sétimo dia"
         ];
+
+        // Tabela oficial de Luas do Calendário Kongo baseada nos períodos informados
+        function obterLuaKongo(data) {
+            let mes = data.getMonth() + 1; // 1 a 12
+            let dia = data.getDate();
+
+            // Mapeamento exato das 12 Luas do Calendário Kongo
+            if ((mes === 4 && dia >= 7) || (mes === 5 && dia <= 6)) return "1ª LUA • YAHANDI";
+            if ((mes === 5 && dia >= 7) || (mes === 6 && dia <= 5)) return "2ª LUA • LUBENI";
+            if ((mes === 6 && dia >= 6) || (mes === 7 && dia <= 5)) return "3ª LUA • NGUDI";
+            if ((mes === 7 && dia >= 6) || (mes === 8 && dia <= 4)) return "4ª LUA • EZALA";
+            if ((mes === 8 && dia >= 5) || (mes === 9 && dia <= 3)) return "5ª LUA • NUANINI";
+            if ((mes === 9 && dia >= 4) || (mes === 10 && dia <= 3)) return "6ª LUA • MASESI";
+            if ((mes === 10 && dia >= 4) || (mes === 11 && dia <= 2)) return "7ª LUA • NSIMBANU";
+            if ((mes === 11 && dia >= 3) || (mes === 12 && dia <= 2)) return "8ª LUA • LEMBA";
+            if ((mes === 12 && dia >= 3) || (mes === 1 && dia <= 1)) return "9ª LUA • ISEKELE";
+            if (mes === 1) return "10ª LUA • ZIBULANI";
+            if ((mes === 2) || (mes === 3 && dia <= 2)) return "11ª LUA • YASAH";
+            return "12ª LUA • BENGAMI"; // Março a 6 de Abril
+        }
 
         function calculateNtu(date = new Date()) {
             const anchor = new Date(CFG.anchorLocal);
@@ -796,6 +843,7 @@
             const luaIndex = Math.floor(jornadaIndex / 30);
             const lua = LUAS[((luaIndex % 12) + 12) % 12];
             const nvula = CFG.nvula + Math.floor(jornadaIndex / 360);
+            const luaKongo = obterLuaKongo(date);
 
             // Ciclo dos dias da semana tradicional
             const diaSemanaLower = diasNtuExtenso[date.getDay()] || "primeiro dia";
@@ -824,6 +872,7 @@
                 jornada,
                 jornadaOrdinal: getOrdinal(jornada),
                 lua: lua.toUpperCase(),
+                luaKongo,
                 nvula,
                 diaSemana: diaSemanaLower,
                 diaSemanaLower,
@@ -992,9 +1041,9 @@
             const currentMinute = now.getMinutes();
             const ntu = calculateNtu(now);
 
-            const hourEl = document.getElementById("hourDisplay");
+            const hourEl = document.getElementById("txtHoraNtu") || document.getElementById("hourDisplay");
             if (hourEl) {
-                const newHourText = getOrdinal(ntu.hourNumber) + " HORA\n" + ntu.period;
+                const newHourText = getOrdinal(ntu.hourNumber) + " HORA " + ntu.period;
                 if (hourEl.innerText !== newHourText) {
                     hourEl.innerText = newHourText;
                 }
@@ -1017,7 +1066,7 @@
                 }
             }
 
-            const minEl = document.getElementById("minDisplay");
+            const minEl = document.getElementById("txtContadorMinSec") || document.getElementById("minDisplay");
             if (minEl) {
                 minEl.innerText = String(now.getMinutes()).padStart(2, '0') + " minutos • " + String(now.getSeconds()).padStart(2, '0') + " segundos";
                 if (lastMinute !== -1 && currentMinute !== lastMinute) {
@@ -1025,6 +1074,11 @@
                     void minEl.offsetWidth;
                     minEl.classList.add("fade-update");
                 }
+            }
+
+            const luaEl = document.getElementById("txtLuaKongo");
+            if (luaEl && luaEl.innerText !== ntu.luaKongo) {
+                luaEl.innerText = ntu.luaKongo;
             }
 
             const dateEl = document.getElementById("dateDisplay");
@@ -1040,7 +1094,7 @@
                 }
             }
 
-            const weekdayEl = document.getElementById("weekdayDisplay") || document.getElementById("txtDiaSemana");
+            const weekdayEl = document.getElementById("txtDiaSemana") || document.getElementById("weekdayDisplay");
             if (weekdayEl) {
                 if (weekdayEl.innerText !== ntu.diaSemanaLower) {
                     weekdayEl.innerText = ntu.diaSemanaLower;
@@ -1062,6 +1116,11 @@
             const mm = String(now.getMinutes()).padStart(2, '0');
             const ss = String(now.getSeconds()).padStart(2, '0');
             const hhMm = hh + ":" + mm;
+
+            const gregEl = document.getElementById("txtRelogioGregoriano") || document.getElementById("gregorianDisplay");
+            if (gregEl) {
+                gregEl.innerHTML = hh + ":" + mm + ":" + ss + "<br>" + d + "/" + m + "/" + y;
+            }
             
             // Atualização do Modo StandBy com Hora e Data NTU Exclusivas
             const digitalEl = document.getElementById('standbyTimeDigital');
@@ -1226,6 +1285,152 @@
                 }
             }
         });
+
+        // ==========================================
+        // CANVAS DE POEIRA DE OURO IMPERIAL FLUTUANTE
+        // ==========================================
+        (function initGoldenDustCanvas() {
+            const canvas = document.getElementById('canvasPoeiraOuro');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d', { alpha: true });
+            if (!ctx) return;
+
+            let width = 0;
+            let height = 0;
+            let dpr = 1;
+            let animationFrameId = null;
+
+            let targetForceX = 0;
+            let targetForceY = 0;
+            let currentForceX = 0;
+            let currentForceY = 0;
+
+            const GOLD_PALETTE = ['#FFFAC4', '#F0C63E', '#D4AF37', '#E5C158', '#DFBE91'];
+            const PARTICLE_COUNT = 60;
+            let particles = [];
+
+            function resize() {
+                dpr = Math.min(window.devicePixelRatio || 1, 2);
+                width = window.innerWidth;
+                height = window.innerHeight;
+                canvas.width = Math.floor(width * dpr);
+                canvas.height = Math.floor(height * dpr);
+                canvas.style.width = width + 'px';
+                canvas.style.height = height + 'px';
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.scale(dpr, dpr);
+            }
+
+            function initParticles() {
+                particles = [];
+                for (let i = 0; i < PARTICLE_COUNT; i++) {
+                    particles.push({
+                        x: Math.random() * width,
+                        y: Math.random() * height,
+                        size: 0.8 + Math.random() * 2.0,
+                        baseVx: (Math.random() - 0.5) * 0.25,
+                        baseVy: -(0.25 + Math.random() * 0.45),
+                        color: GOLD_PALETTE[Math.floor(Math.random() * GOLD_PALETTE.length)],
+                        baseAlpha: 0.25 + Math.random() * 0.65,
+                        pulsePhase: Math.random() * Math.PI * 2,
+                        pulseSpeed: 0.02 + Math.random() * 0.035,
+                        sparkleThreshold: 0.78 + Math.random() * 0.15
+                    });
+                }
+            }
+
+            resize();
+            initParticles();
+
+            let hasGyro = false;
+            window.addEventListener('deviceorientation', function(e) {
+                if (e.gamma !== null && e.beta !== null) {
+                    hasGyro = true;
+                    const clampedGamma = Math.max(-45, Math.min(45, e.gamma));
+                    const clampedBeta = Math.max(-45, Math.min(45, e.beta - 45));
+                    targetForceX = (clampedGamma / 45) * 1.8;
+                    targetForceY = (clampedBeta / 45) * 1.5;
+                }
+            }, { passive: true });
+
+            window.addEventListener('mousemove', function(e) {
+                if (hasGyro) return;
+                const normX = (e.clientX / width) - 0.5;
+                const normY = (e.clientY / height) - 0.5;
+                targetForceX = normX * 1.6;
+                targetForceY = normY * 1.4;
+            }, { passive: true });
+
+            window.addEventListener('resize', resize);
+
+            let isRunning = true;
+            function render() {
+                if (!isRunning) return;
+
+                currentForceX += (targetForceX - currentForceX) * 0.05;
+                currentForceY += (targetForceY - currentForceY) * 0.05;
+
+                ctx.clearRect(0, 0, width, height);
+
+                for (let i = 0; i < particles.length; i++) {
+                    const p = particles[i];
+                    const massFactor = p.size / 1.5;
+                    p.x += p.baseVx + currentForceX * massFactor;
+                    p.y += p.baseVy + currentForceY * massFactor;
+
+                    p.pulsePhase += p.pulseSpeed;
+                    const shimmer = 0.55 + 0.45 * Math.sin(p.pulsePhase);
+                    const currentAlpha = Math.max(0.08, Math.min(1, p.baseAlpha * shimmer));
+
+                    const margin = 20;
+                    if (p.x < -margin) p.x = width + margin;
+                    if (p.x > width + margin) p.x = -margin;
+                    if (p.y < -margin) p.y = height + margin;
+                    if (p.y > height + margin) p.y = -margin;
+
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = currentAlpha;
+                    ctx.shadowColor = '#D4AF37';
+                    ctx.shadowBlur = p.size > 1.5 ? 9 : 5;
+                    ctx.fill();
+
+                    if (p.size >= 1.6 && shimmer > p.sparkleThreshold) {
+                        const crossLen = p.size * 2.2;
+                        ctx.strokeStyle = '#FFFAC4';
+                        ctx.lineWidth = 0.7;
+                        ctx.globalAlpha = currentAlpha * 0.85;
+
+                        ctx.beginPath();
+                        ctx.moveTo(p.x - crossLen, p.y);
+                        ctx.lineTo(p.x + crossLen, p.y);
+                        ctx.moveTo(p.x, p.y - crossLen);
+                        ctx.lineTo(p.x, p.y + crossLen);
+                        ctx.stroke();
+                    }
+
+                    ctx.restore();
+                }
+
+                animationFrameId = requestAnimationFrame(render);
+            }
+
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden) {
+                    isRunning = false;
+                    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                } else {
+                    if (!isRunning) {
+                        isRunning = true;
+                        animationFrameId = requestAnimationFrame(render);
+                    }
+                }
+            });
+
+            animationFrameId = requestAnimationFrame(render);
+        })();
     </script>
 </body>
 </html>
