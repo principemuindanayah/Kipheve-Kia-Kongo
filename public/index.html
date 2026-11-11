@@ -505,9 +505,10 @@
 
     <hr class="linha-divisorias">
 
-    <!-- Secção Astronómica com Número e Nome da Lua -->
+    <!-- Secção Astronómica com Hierarquia Cósmica Estrita: Ano -> Lua -> Jornada -> Dia da Semana -->
     <div class="info-astro">NVULA 6008</div>
     <div class="jornada-texto" id="txtLuaKongo">8ª LUA • LEMBA</div>
+    <div class="jornada-numero" id="txtJornadaKongo" style="font-size: 15px; color: var(--date-color); font-weight: 600; letter-spacing: 1.5px; margin: 4px 0 6px; text-transform: uppercase;">13ª JORNADA</div>
     <div class="dia-semana" id="txtDiaSemana">primeiro dia</div>
 
     <hr class="linha-divisorias">
@@ -570,8 +571,9 @@
                 </div>
                 <div style="text-align: left; min-width: 190px;">
                     <div style="font-size: 11px; color: var(--text-mins); letter-spacing: 2px; text-transform: uppercase; font-weight: 700;">Tempo Cósmico NTU</div>
-                    <div id="analogKongoHour" style="font-size: 22px; font-weight: bold; color: var(--gold-secondary); margin: 6px 0; line-height: 1.2;"></div>
-                    <div id="analogKongoMinSec" style="font-size: 14px; color: var(--text-mins); margin-bottom: 8px;"></div>
+                    <div id="analogKongoHour" style="font-size: 20px; font-weight: bold; color: var(--gold-secondary); margin: 4px 0 2px; line-height: 1.2;"></div>
+                    <div id="analogKongoNome" style="font-size: 15px; color: #C5A059; font-weight: 600; margin-bottom: 4px;"></div>
+                    <div id="analogKongoMinSec" style="font-size: 13px; color: var(--text-mins); margin-bottom: 8px;"></div>
                     <div id="analogKongoDate" style="font-size: 14px; color: var(--date-color); font-weight: 600; border-top: 1px solid var(--line-color); padding-top: 8px; line-height: 1.4;"></div>
                     <div id="analogKongoWeekday" style="font-size: 12px; color: var(--gold-secondary); font-weight: 700; letter-spacing: 1.5px; margin-top: 4px;"></div>
                 </div>
@@ -1081,6 +1083,14 @@
                 luaEl.innerText = ntu.luaKongo;
             }
 
+            const jornadaEl = document.getElementById("txtJornadaKongo");
+            if (jornadaEl) {
+                const jornadaText = ntu.jornadaOrdinal + " JORNADA";
+                if (jornadaEl.innerText !== jornadaText) {
+                    jornadaEl.innerText = jornadaText;
+                }
+            }
+
             const dateEl = document.getElementById("dateDisplay");
             if (dateEl) {
                 const newDateText = "NVULA " + ntu.nvula + "\n" + ntu.lua + " • " + ntu.jornadaOrdinal + " JORNADA";
@@ -1122,7 +1132,7 @@
                 gregEl.innerHTML = hh + ":" + mm + ":" + ss + "<br>" + d + "/" + m + "/" + y;
             }
             
-            // Atualização do Modo StandBy com Hora e Data NTU Exclusivas
+            // Atualização do Modo StandBy com Sincronização Total das Mesmas Variáveis
             const digitalEl = document.getElementById('standbyTimeDigital');
             if (digitalEl) {
                 digitalEl.innerHTML = '<span>' + String(ntu.hourNumber).padStart(2, '0') + '</span>' +
@@ -1135,14 +1145,18 @@
             const sKongoNome = document.getElementById('standbyKongoNome');
             if (sKongoNome) sKongoNome.innerText = ntu.nomeNtu;
             const sKongoDate = document.getElementById('standbyKongoDate');
-            if (sKongoDate) sKongoDate.innerText = ntu.dataNtu;
+            if (sKongoDate) {
+                sKongoDate.innerHTML = '<div style="font-size: 12px; color: var(--text-mins); letter-spacing: 1.5px;">NVULA ' + ntu.nvula + '</div>' +
+                    '<div style="font-size: 15px; color: var(--gold-primary); font-weight: 700; margin: 4px 0;">' + ntu.luaKongo + '</div>' +
+                    '<div style="font-size: 14px; color: var(--date-color); font-weight: 600;">' + ntu.jornadaOrdinal + ' JORNADA</div>';
+            }
             const sKongoWeekday = document.getElementById('standbyKongoWeekday');
             if (sKongoWeekday) sKongoWeekday.innerText = ntu.diaSemanaLower;
 
-            // Ponteiros analógicos com Painel NTU Exclusivo
+            // Ponteiros analógicos Dikenga: Rotação calculada estritamente com base no Tempo N'TU (ciclo de 13 horas, de 0 a 12)
             const sSec = now.getSeconds() * 6;
             const sMin = now.getMinutes() * 6 + now.getSeconds() * 0.1;
-            const sHr = (now.getHours() % 12) * 30 + now.getMinutes() * 0.5;
+            const sHr = (ntu.hourNumber % 12) * 30 + now.getMinutes() * 0.5;
             const hSec = document.getElementById('analogHandSec');
             if (hSec) hSec.setAttribute('transform', 'rotate(' + sSec + ' 100 100)');
             const hMin = document.getElementById('analogHandMin');
@@ -1151,10 +1165,16 @@
             if (hHour) hHour.setAttribute('transform', 'rotate(' + sHr + ' 100 100)');
             const aKongoHour = document.getElementById('analogKongoHour');
             if (aKongoHour) aKongoHour.innerText = ntu.horaNtu;
+            const aKongoNome = document.getElementById('analogKongoNome');
+            if (aKongoNome) aKongoNome.innerText = ntu.nomeNtu;
             const aKongoMinSec = document.getElementById('analogKongoMinSec');
             if (aKongoMinSec) aKongoMinSec.innerText = mm + " minutos • " + ss + " segundos";
             const aKongoDate = document.getElementById('analogKongoDate');
-            if (aKongoDate) aKongoDate.innerText = ntu.dataNtu;
+            if (aKongoDate) {
+                aKongoDate.innerHTML = '<div style="font-size: 12px; color: var(--text-mins);">NVULA ' + ntu.nvula + '</div>' +
+                    '<div style="font-size: 14px; color: var(--gold-primary); font-weight: 700; margin: 2px 0;">' + ntu.luaKongo + '</div>' +
+                    '<div style="font-size: 13px; color: var(--date-color);">' + ntu.jornadaOrdinal + ' JORNADA</div>';
+            }
             const aKongoWeekday = document.getElementById('analogKongoWeekday');
             if (aKongoWeekday) aKongoWeekday.innerText = ntu.diaSemanaLower;
 
@@ -1306,7 +1326,7 @@
             let currentForceY = 0;
 
             const GOLD_PALETTE = ['#FFFAC4', '#F0C63E', '#D4AF37', '#E5C158', '#DFBE91'];
-            const PARTICLE_COUNT = 60;
+            const PARTICLE_COUNT = 75;
             let particles = [];
 
             function resize() {
@@ -1325,16 +1345,16 @@
                 particles = [];
                 for (let i = 0; i < PARTICLE_COUNT; i++) {
                     particles.push({
-                        x: Math.random() * width,
-                        y: Math.random() * height,
-                        size: 0.8 + Math.random() * 2.0,
-                        baseVx: (Math.random() - 0.5) * 0.25,
-                        baseVy: -(0.25 + Math.random() * 0.45),
+                        x: Math.random() * (width || window.innerWidth || 400),
+                        y: Math.random() * (height || window.innerHeight || 800),
+                        size: 1.0 + Math.random() * 2.4,
+                        baseVx: (Math.random() - 0.5) * 0.35,
+                        baseVy: -(0.3 + Math.random() * 0.55),
                         color: GOLD_PALETTE[Math.floor(Math.random() * GOLD_PALETTE.length)],
-                        baseAlpha: 0.25 + Math.random() * 0.65,
+                        baseAlpha: 0.4 + Math.random() * 0.55,
                         pulsePhase: Math.random() * Math.PI * 2,
-                        pulseSpeed: 0.02 + Math.random() * 0.035,
-                        sparkleThreshold: 0.78 + Math.random() * 0.15
+                        pulseSpeed: 0.02 + Math.random() * 0.04,
+                        sparkleThreshold: 0.7 + Math.random() * 0.15
                     });
                 }
             }
@@ -1393,8 +1413,15 @@
                     ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
                     ctx.fillStyle = p.color;
                     ctx.globalAlpha = currentAlpha;
-                    ctx.shadowColor = '#D4AF37';
-                    ctx.shadowBlur = p.size > 1.5 ? 9 : 5;
+                    ctx.shadowColor = '#F0C63E';
+                    ctx.shadowBlur = p.size > 1.5 ? 12 : 7;
+                    ctx.fill();
+
+                    // Auréola suave imperial
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size * 2.2, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = currentAlpha * 0.22;
                     ctx.fill();
 
                     if (p.size >= 1.6 && shimmer > p.sparkleThreshold) {

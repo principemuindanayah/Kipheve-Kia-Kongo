@@ -42,7 +42,7 @@ export const GoldenDustCanvas: React.FC = () => {
     let currentForceX = 0;
     let currentForceY = 0;
 
-    const PARTICLE_COUNT = 60;
+    const PARTICLE_COUNT = 75;
     let particles: Particle[] = [];
 
     const resize = () => {
@@ -63,16 +63,16 @@ export const GoldenDustCanvas: React.FC = () => {
       particles = [];
       for (let i = 0; i < PARTICLE_COUNT; i++) {
         particles.push({
-          x: Math.random() * width,
-          y: Math.random() * height,
-          size: 0.8 + Math.random() * 2.0,
-          baseVx: (Math.random() - 0.5) * 0.25,
-          baseVy: -(0.25 + Math.random() * 0.45), // Flutuação ascendente suave
+          x: Math.random() * (width || window.innerWidth || 400),
+          y: Math.random() * (height || window.innerHeight || 800),
+          size: 1.0 + Math.random() * 2.4,
+          baseVx: (Math.random() - 0.5) * 0.35,
+          baseVy: -(0.3 + Math.random() * 0.55), // Flutuação ascendente contínua
           color: GOLD_PALETTE[Math.floor(Math.random() * GOLD_PALETTE.length)],
-          baseAlpha: 0.25 + Math.random() * 0.65,
+          baseAlpha: 0.4 + Math.random() * 0.55,
           pulsePhase: Math.random() * Math.PI * 2,
-          pulseSpeed: 0.02 + Math.random() * 0.035,
-          sparkleThreshold: 0.78 + Math.random() * 0.15
+          pulseSpeed: 0.02 + Math.random() * 0.04,
+          sparkleThreshold: 0.7 + Math.random() * 0.15
         });
       }
     };
@@ -149,8 +149,15 @@ export const GoldenDustCanvas: React.FC = () => {
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fillStyle = p.color;
         ctx.globalAlpha = currentAlpha;
-        ctx.shadowColor = '#D4AF37';
-        ctx.shadowBlur = p.size > 1.5 ? 9 : 5;
+        ctx.shadowColor = '#F0C63E';
+        ctx.shadowBlur = p.size > 1.5 ? 12 : 7;
+        ctx.fill();
+
+        // Auréola suave imperial
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * 2.2, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = currentAlpha * 0.22;
         ctx.fill();
 
         // Cintilação especial em cruz dourada para partículas maiores no ápice do brilho

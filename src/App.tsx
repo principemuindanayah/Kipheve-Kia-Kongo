@@ -353,6 +353,7 @@ export default function App() {
       const currentHour = now.getHours();
       const currentMinute = now.getMinutes();
       const ntu = calculateNtu(now);
+      setNtuData(ntu);
 
       const hourEl = document.getElementById("txtHoraNtu") || document.getElementById("hourDisplay");
       if (hourEl) {
@@ -392,6 +393,14 @@ export default function App() {
       const luaEl = document.getElementById("txtLuaKongo");
       if (luaEl && luaEl.innerText !== ntu.luaKongo) {
         luaEl.innerText = ntu.luaKongo;
+      }
+
+      const jornadaEl = document.getElementById("txtJornadaKongo");
+      if (jornadaEl) {
+        const jornadaText = ntu.jornadaOrdinal + " JORNADA";
+        if (jornadaEl.innerText !== jornadaText) {
+          jornadaEl.innerText = jornadaText;
+        }
       }
 
       const dateEl = document.getElementById("dateDisplay");
@@ -471,10 +480,10 @@ export default function App() {
   // Cálculos para os mostradores
   const sec = nowDate.getSeconds();
   const min = nowDate.getMinutes();
-  const hr = nowDate.getHours();
   const secDeg = sec * 6;
   const minDeg = min * 6 + sec * 0.1;
-  const hrDeg = (hr % 12) * 30 + min * 0.5;
+  // Ponteiro das Horas do Mostrador Dikenga calculado estritamente pelo Tempo N'TU (ciclo de 13 horas, de 0 a 12)
+  const ntuHrDeg = (ntuData.hourNumber % 12) * 30 + min * 0.5;
 
   const digitalHh = String(nowDate.getHours()).padStart(2, '0');
   const digitalMm = String(nowDate.getMinutes()).padStart(2, '0');
@@ -497,7 +506,9 @@ export default function App() {
           width: '100%',
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center'
+          alignItems: 'center',
+          position: 'relative',
+          zIndex: 1
         }}
       >
         <h1
@@ -522,9 +533,23 @@ export default function App() {
 
         <hr className="linha-divisorias" />
 
-        {/* Secção Astronómica com Número e Nome da Lua */}
+        {/* Secção Astronómica com Hierarquia Cósmica Estrita: Ano -> Lua -> Jornada -> Dia da Semana */}
         <div className="info-astro">NVULA {ntuData.nvula}</div>
         <div className="jornada-texto" id="txtLuaKongo">{ntuData.luaKongo}</div>
+        <div
+          className="jornada-numero"
+          id="txtJornadaKongo"
+          style={{
+            fontSize: '15px',
+            color: 'var(--date-color)',
+            fontWeight: 600,
+            letterSpacing: '1.5px',
+            margin: '4px 0 6px',
+            textTransform: 'uppercase'
+          }}
+        >
+          {ntuData.jornadaOrdinal} JORNADA
+        </div>
         <div className="dia-semana" id="txtDiaSemana">{ntuData.diaSemanaLower}</div>
 
         <hr className="linha-divisorias" />
@@ -637,10 +662,11 @@ export default function App() {
                   {ntuData.nomeNtu}
                 </div>
 
+                {/* Sincronização Total com a Tela Principal: NVULA -> Lua com Número -> Jornada -> Dia da Semana */}
                 <div
                   style={{
                     marginTop: '12px',
-                    padding: '8px 24px',
+                    padding: '10px 24px',
                     background: 'rgba(212, 175, 55, 0.08)',
                     borderRadius: '20px',
                     border: '1px solid var(--line-color)',
@@ -651,8 +677,10 @@ export default function App() {
                     letterSpacing: '1px'
                   }}
                 >
-                  <div>{ntuData.dataNtu}</div>
-                  <div style={{ fontSize: '14px', color: 'var(--gold-secondary)', fontWeight: 700, letterSpacing: '1.5px', marginTop: '6px' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-mins)', letterSpacing: '1.5px' }}>NVULA {ntuData.nvula}</div>
+                  <div style={{ fontSize: '15px', color: 'var(--gold-primary)', fontWeight: 700, margin: '4px 0' }}>{ntuData.luaKongo}</div>
+                  <div style={{ fontSize: '14px', color: 'var(--date-color)', fontWeight: 600, letterSpacing: '1px' }}>{ntuData.jornadaOrdinal} JORNADA</div>
+                  <div style={{ fontSize: '14px', color: 'var(--gold-secondary)', fontWeight: 700, letterSpacing: '1.5px', marginTop: '6px', textTransform: 'lowercase' }}>
                     {ntuData.diaSemanaLower}
                   </div>
                 </div>
@@ -672,7 +700,7 @@ export default function App() {
                   padding: '10px 0'
                 }}
               >
-                {/* Mostrador Redondo com Ponteiros Animados e Geometria Sagrada */}
+                {/* Mostrador Redondo Dikenga com Ponteiros Animados calculados com base no Tempo N'TU */}
                 <div style={{ position: 'relative', width: '180px', height: '180px' }}>
                   <svg viewBox="0 0 200 200" width="180" height="180" style={{ filter: 'drop-shadow(0 0 12px rgba(212, 175, 55, 0.35))' }}>
                     <circle cx="100" cy="100" r="94" fill="#060606" stroke="var(--gold-secondary)" strokeWidth="2.5" />
@@ -687,6 +715,7 @@ export default function App() {
                     <text x="100" y="174" fill="var(--gold-primary)" fontSize="10" fontWeight="bold" textAnchor="middle">6 • MUSONI</text>
                     <text x="20" y="104" fill="var(--gold-primary)" fontSize="9" fontWeight="bold" textAnchor="start">KALA</text>
 
+                    {/* Ponteiro das Horas Dikenga: Rotação calculada estritamente pelo Tempo N'TU (ciclo de 13 horas, de 0 a 12) */}
                     <line
                       x1="100"
                       y1="100"
@@ -695,9 +724,10 @@ export default function App() {
                       stroke="var(--gold-primary)"
                       strokeWidth="4"
                       strokeLinecap="round"
-                      transform={`rotate(${hrDeg} 100 100)`}
+                      transform={`rotate(${ntuHrDeg} 100 100)`}
                     />
 
+                    {/* Ponteiro dos Minutos */}
                     <line
                       x1="100"
                       y1="100"
@@ -709,6 +739,7 @@ export default function App() {
                       transform={`rotate(${minDeg} 100 100)`}
                     />
 
+                    {/* Ponteiro dos Segundos */}
                     <line
                       x1="100"
                       y1="115"
@@ -724,21 +755,26 @@ export default function App() {
                   </svg>
                 </div>
 
-                {/* Painel Lateral Cósmico com Hora e Data NTU Exclusivas */}
+                {/* Painel Lateral Cósmico com Sincronização Total das mesmas variáveis da tela principal */}
                 <div style={{ textAlign: 'left', minWidth: '190px' }}>
                   <div style={{ fontSize: '11px', color: 'var(--text-mins)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 700 }}>
                     TEMPO CÓSMICO NTU
                   </div>
-                  <div style={{ fontSize: '22px', fontWeight: 'bold', color: 'var(--gold-secondary)', margin: '6px 0', lineHeight: 1.2 }}>
+                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--gold-secondary)', margin: '4px 0 2px', lineHeight: 1.2 }}>
                     {ntuData.horaNtu}
                   </div>
-                  <div style={{ fontSize: '14px', color: 'var(--text-mins)', marginBottom: '8px' }}>
+                  <div style={{ fontSize: '15px', color: '#C5A059', fontWeight: 600, marginBottom: '4px' }}>
+                    {ntuData.nomeNtu}
+                  </div>
+                  <div style={{ fontSize: '13px', color: 'var(--text-mins)', marginBottom: '8px' }}>
                     {String(min).padStart(2, '0')} minutos • {String(sec).padStart(2, '0')} segundos
                   </div>
-                  <div style={{ fontSize: '14px', color: 'var(--date-color)', fontWeight: 600, borderTop: '1px solid var(--line-color)', paddingTop: '8px', lineHeight: 1.4 }}>
-                    <div>{ntuData.dataNtu}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--gold-secondary)', fontWeight: 700, letterSpacing: '1.5px', marginTop: '4px' }}>
-                      {ntuData.diaSemanaUpper}
+                  <div style={{ fontSize: '13px', color: 'var(--date-color)', fontWeight: 600, borderTop: '1px solid var(--line-color)', paddingTop: '8px', lineHeight: 1.4 }}>
+                    <div style={{ fontSize: '12px', color: 'var(--text-mins)' }}>NVULA {ntuData.nvula}</div>
+                    <div style={{ fontSize: '14px', color: 'var(--gold-primary)', fontWeight: 700, margin: '2px 0' }}>{ntuData.luaKongo}</div>
+                    <div style={{ fontSize: '13px', color: 'var(--date-color)' }}>{ntuData.jornadaOrdinal} JORNADA</div>
+                    <div style={{ fontSize: '13px', color: 'var(--gold-secondary)', fontWeight: 700, letterSpacing: '1.5px', marginTop: '4px', textTransform: 'lowercase' }}>
+                      {ntuData.diaSemanaLower}
                     </div>
                   </div>
                 </div>

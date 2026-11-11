@@ -1,14 +1,19 @@
 {
   "id": "/",
   "name": "Relógio Kongo",
-  "short_name": "R. Kongo",
+  "short_name": "Relógio Kongo",
   "description": "Relógio Kongo cósmico 100% offline. Baseado no conhecimento do N'tothila TadiDiambuisu Evô TadiDiantedimisi. Desenvolvido por Príncipe Muinda Na'Yah com ajuda da OpenAi é do Gemini",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#080807",
+  "background_color": "#050505",
   "theme_color": "#D4AF37",
+  "categories": ["lifestyle", "utilities"],
+  "launch_handler": {
+    "client_mode": "auto"
+  },
   "icons": [
     {
       "src": "icon.png",
